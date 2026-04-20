@@ -10,7 +10,7 @@ import {
   DollarSign, Download, Printer, Eye, EyeOff, ShieldCheck, Code, Search, 
   Filter, AlertTriangle, Upload, ChevronLeft, ChevronRight, PiggyBank, 
   Edit3, Calendar, Wallet, ArrowUpRight, ArrowDownRight, ArrowRightLeft,
-  CheckCircle2, Lock, Camera, Mail, Globe, PlusCircle, PenTool, RefreshCw, Bell
+  CheckCircle2, Lock, Camera, Mail, Globe, PlusCircle, PenTool, RefreshCw, Bell, KeyRound
 } from "lucide-react";
 
 // ── CONFIG ─────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ const fmtMoney = (n, curr, lang) => {
 export default function App() {
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem("nafinance_db_v6");
+      const saved = localStorage.getItem("nafinance_db_v7");
       if (saved) return JSON.parse(saved);
     } catch(e) {}
     return {
@@ -76,10 +76,10 @@ export default function App() {
 
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem("nafinance_set_v6");
+      const saved = localStorage.getItem("nafinance_set_v7");
       if (saved) return JSON.parse(saved);
     } catch(e) {}
-    return { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "" };
+    return { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "", recoveryWord: "" };
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(!settings.pinLock);
@@ -89,16 +89,55 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const appRef = useRef(null);
 
-  useEffect(() => { localStorage.setItem("nafinance_db_v6", JSON.stringify(data)); }, [data]);
-  useEffect(() => { localStorage.setItem("nafinance_set_v6", JSON.stringify(settings)); }, [settings]);
+  useEffect(() => { localStorage.setItem("nafinance_db_v7", JSON.stringify(data)); }, [data]);
+  useEffect(() => { localStorage.setItem("nafinance_set_v7", JSON.stringify(settings)); }, [settings]);
+
+  // SMART APP LOCK (Background Lock)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden" && settings.pinLock) {
+        setIsAuthenticated(false);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [settings.pinLock]);
+
+  // AUTO-RECURRING LOGIC
+  useEffect(() => {
+    if(!isAuthenticated) return;
+    const today = new Date();
+    const curMonth = `${today.getFullYear()}-${today.getMonth()}`;
+    const day = today.getDate();
+    let updated = false;
+
+    setData(prev => {
+      let newData = { ...prev };
+      newData.recurring = newData.recurring.map(rec => {
+        if (day >= rec.day && rec.lastApplied !== curMonth) {
+          const w = newData.wallets.find(wa => wa.id === rec.walletId);
+          if (w && w.balance >= rec.amount) {
+            const tx = { id: genId(), type: "expense", date: TODAY(), amount: rec.amount, category: rec.category, walletId: rec.walletId, note: `[Auto] ${rec.name}` };
+            newData.txs = [tx, ...newData.txs];
+            newData.wallets = newData.wallets.map(wa => wa.id === rec.walletId ? { ...wa, balance: wa.balance - rec.amount } : wa);
+            updated = true;
+            return { ...rec, lastApplied: curMonth };
+          }
+        }
+        return rec;
+      });
+      return updated ? newData : prev;
+    });
+    if(updated) showToast(settings.lang === "bn" ? "অটো-রিকারিং বিল পরিশোধ হয়েছে!" : "Auto-recurring bills applied!", "success");
+  }, [isAuthenticated, settings.lang]);
 
   const isDark = settings.theme === "dark";
-  const TH = isDark 
+  const TH     = isDark 
     ? { bg: "#030712", bgCard: "rgba(15,23,42,0.9)", bgInner: "rgba(30,41,59,0.6)", border: "rgba(99,102,241,0.15)", text: "#e2e8f0", textMid: "#94a3b8", textDim: "#475569" }
     : { bg: "#f8fafc", bgCard: "#ffffff", bgInner: "#f1f5f9", border: "#e2e8f0", text: "#0f172a", textMid: "#64748b", textDim: "#94a3b8" };
-  const t = key => DICT[key]?.[settings.lang] || key;
-  const lang = settings.lang;
-  const fmt = n => settings.hideBalance ? "••••" : fmtMoney(n, settings.curr, lang);
+  const t      = key => DICT[key]?.[settings.lang] || key;
+  const lang   = settings.lang;
+  const fmt    = n   => settings.hideBalance ? "••••" : fmtMoney(n, settings.curr, lang);
 
   const showToast = (msg, type="error") => {
     setToast({ msg, type });
@@ -162,14 +201,13 @@ export default function App() {
   };
 
   if (!isAuthenticated) {
-    return <PinScreen correctPin={settings.pinLock} onSuccess={() => setIsAuthenticated(true)} TH={TH} lang={lang} />;
+    return <PinScreen settings={settings} setSettings={setSettings} onSuccess={() => setIsAuthenticated(true)} TH={TH} lang={lang} showToast={showToast} />;
   }
 
   const nowDate  = new Date();
   const todayStr = lang === "bn" ? `${DAY_NAMES.bn[nowDate.getDay()]}, ${nowDate.getDate()} ${MONTH_SHORT.bn[nowDate.getMonth()]} ${nowDate.getFullYear()}` : `${DAY_NAMES.en[nowDate.getDay()]}, ${nowDate.getDate()} ${MONTH_SHORT.en[nowDate.getMonth()]} ${nowDate.getFullYear()}`;
   const selStyle = { backgroundColor: TH.bgInner, color: TH.text, border: `1px solid ${TH.border}` };
 
-  // ALERTS CALCULATION
   const thisMonth = TODAY().slice(0, 7);
   const budgetAlerts = getCategories("expense").filter(cat => {
     const lim = data.budgets[cat.id];
@@ -181,13 +219,12 @@ export default function App() {
   const debtAlerts = (data.debts || []).filter(d => {
     if (!d.returnDate) return false;
     const diffDays = Math.ceil((new Date(d.returnDate) - new Date(TODAY())) / (1000 * 60 * 60 * 24));
-    return diffDays <= 3 && diffDays >= -30; // Upcoming in 3 days or overdue
+    return diffDays <= 3 && diffDays >= -30;
   });
 
   return (
     <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, fontFamily: "'Hind Siliguri', sans-serif", transition: "background-color 0.5s ease, color 0.5s ease" }}>
       
-      {/* CSS: Removes arrows from number inputs */}
       <style>{`
         input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
@@ -238,21 +275,50 @@ export default function App() {
   );
 }
 
-// ── PIN SCREEN ────────────────────────────────────────────────────────
-function PinScreen({ correctPin, onSuccess, TH, lang }) {
+// ── PIN SCREEN (WITH RECOVERY FEATURE) ────────────────────────────────
+function PinScreen({ settings, setSettings, onSuccess, TH, lang, showToast }) {
   const [input, setInput] = useState("");
+  const [forgot, setForgot] = useState(false);
+  const [recWord, setRecWord] = useState("");
+
   const handlePress = (num) => {
     if (input.length < 4) {
       const newVal = input + num;
       setInput(newVal);
       if (newVal.length === 4) {
         setTimeout(() => {
-          if (newVal === correctPin) onSuccess();
+          if (newVal === settings.pinLock) onSuccess();
           else { alert(lang==="bn"?"ভুল পিন!":"Incorrect PIN!"); setInput(""); }
         }, 200);
       }
     }
   };
+
+  const handleRecover = () => {
+    if(recWord.trim().toLowerCase() === settings.recoveryWord) {
+      setSettings({...settings, pinLock: "", recoveryWord: ""});
+      showToast(lang==="bn"?"পিন রিসেট সফল হয়েছে!":"PIN Reset Successful!", "success");
+      onSuccess();
+    } else {
+      showToast(lang==="bn"?"রিকভারি শব্দ ভুল!":"Incorrect Recovery Word!", "error");
+    }
+  };
+
+  if(forgot) {
+    return (
+      <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: TH.bg, color: TH.text, padding: 20 }}>
+        <KeyRound size={48} color="#f59e0b" style={{ marginBottom: 20 }}/>
+        <h2 style={{ fontWeight: 800, marginBottom: 10 }}>{lang==="bn"?"পিন রিকভার করুন":"Recover PIN"}</h2>
+        <p style={{ fontSize: 12, color: TH.textMid, marginBottom: 30, textAlign: "center" }}>{lang==="bn"?"পিন সেট করার সময় যে গোপন শব্দটি দিয়েছিলেন সেটি লিখুন।":"Enter the secret word you provided during PIN setup."}</p>
+        
+        <input type="text" placeholder={lang==="bn"?"আপনার গোপন শব্দ":"Your secret word"} value={recWord} onChange={e=>setRecWord(e.target.value)} style={{ width: "100%", maxWidth: 300, padding: 16, borderRadius: 16, border: `2px solid ${TH.border}`, background: TH.bgInner, color: TH.text, fontSize: 16, fontWeight: 700, textAlign: "center", outline: "none", marginBottom: 20 }}/>
+        
+        <button onClick={handleRecover} style={{ width: "100%", maxWidth: 300, padding: 16, background: "#f59e0b", color: "#fff", fontWeight: 800, borderRadius: 16, border: "none", cursor: "pointer", marginBottom: 12 }}>{lang==="bn"?"আনলক করুন":"Unlock App"}</button>
+        <button onClick={()=>setForgot(false)} style={{ background: "none", border: "none", color: TH.textMid, fontWeight: 700, cursor: "pointer" }}>{lang==="bn"?"ফিরে যান":"Cancel"}</button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: TH.bg, color: TH.text }}>
       <Lock size={40} color="#8b5cf6" style={{ marginBottom: 20 }}/>
@@ -260,7 +326,7 @@ function PinScreen({ correctPin, onSuccess, TH, lang }) {
       <div style={{ display: "flex", gap: 16, marginBottom: 40 }}>
         {[0,1,2,3].map(i => <div key={i} style={{ width: 20, height: 20, borderRadius: "50%", background: input.length > i ? "#8b5cf6" : TH.bgInner, border: `2px solid ${TH.border}` }}/>)}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 40 }}>
         {[1,2,3,4,5,6,7,8,9].map(n => (
           <button key={n} onClick={()=>handlePress(n.toString())} style={{ width: 60, height: 60, borderRadius: "50%", background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.text, fontSize: 24, fontWeight: 700, cursor: "pointer", outline: "none" }}>{n}</button>
         ))}
@@ -268,6 +334,10 @@ function PinScreen({ correctPin, onSuccess, TH, lang }) {
         <button onClick={()=>handlePress("0")} style={{ width: 60, height: 60, borderRadius: "50%", background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.text, fontSize: 24, fontWeight: 700, cursor: "pointer", outline: "none" }}>0</button>
         <button onClick={()=>setInput(input.slice(0,-1))} style={{ width: 60, height: 60, borderRadius: "50%", background: "transparent", border: "none", color: TH.textMid, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", outline: "none" }}><X size={24}/></button>
       </div>
+      
+      {settings.recoveryWord && (
+        <button onClick={()=>setForgot(true)} style={{ background: "none", border: "none", color: "#8b5cf6", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{lang==="bn"?"পিন ভুলে গেছেন?":"Forgot PIN?"}</button>
+      )}
     </div>
   );
 }
@@ -276,14 +346,17 @@ function PinScreen({ correctPin, onSuccess, TH, lang }) {
 function SettingsModal({ settings, setSettings, setModal, t, TH, isDark, lang, selStyle, data, setData, showToast }) {
   const [pinMode, setPinMode] = useState(false);
   const [newPin, setNewPin] = useState("");
+  const [recovery, setRecovery] = useState("");
   const [catMode, setCatMode] = useState(false);
   const [newCat, setNewCat] = useState({ type: "expense", name: "", icon: "📦", color: "#6366f1" });
   const hiddenFileInput = useRef(null);
 
   const savePin = () => {
     if(newPin.length !== 4 && newPin.length !== 0) return showToast("PIN must be 4 digits", "error");
-    setSettings({...settings, pinLock: newPin});
-    showToast(newPin ? "PIN Enabled" : "PIN Disabled", "success");
+    if(newPin.length === 4 && !recovery.trim()) return showToast(lang==="bn"?"একটি রিকভারি শব্দ দিন":"Enter a recovery word", "error");
+    
+    setSettings({...settings, pinLock: newPin, recoveryWord: recovery.trim().toLowerCase()});
+    showToast(newPin ? "PIN & Recovery Enabled" : "PIN Disabled", "success");
     setPinMode(false);
   };
 
@@ -325,6 +398,7 @@ function SettingsModal({ settings, setSettings, setModal, t, TH, isDark, lang, s
   const handleReset = () => {
     if(window.confirm(lang==="bn"?"আপনি কি নিশ্চিত? সব ডেটা মুছে যাবে!":"Are you sure? All data will be deleted!")) {
       setData({ txs: [], wallets: [{ id: "w1", name: "Cash", balance: 0, icon: "💵" }, { id: "w2", name: "Bank", balance: 0, icon: "🏦" }], debts: [], goals: [], budgets: {}, recurring: [], savings: { balance: 0 }, customCategories: { expense: [], income: [] } });
+      setSettings({...settings, pinLock: "", recoveryWord: ""});
       showToast(lang==="bn"?"অ্যাপ রিসেট হয়েছে":"App Reset Successful", "success");
       setModal(null);
     }
@@ -358,8 +432,12 @@ function SettingsModal({ settings, setSettings, setModal, t, TH, isDark, lang, s
 
         {pinMode ? (
           <div style={{ padding: 16, background: TH.bgInner, borderRadius: 16, marginBottom: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>{lang==="bn"?"৪ সংখ্যার পিন দিন":"Enter 4-digit PIN"}</p>
+            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>{lang==="bn"?"৪ সংখ্যার পিন দিন (অফ করতে ফাঁকা রাখুন)":"Enter 4-digit PIN"}</p>
             <input type="text" inputMode="numeric" placeholder="****" value={newPin} onChange={e=>setNewPin(e.target.value.replace(/[^0-9]/g, '').slice(0,4))} style={{ width: "100%", padding: 12, borderRadius: 12, border: `1px solid ${TH.border}`, background: TH.bg, color: TH.text, textAlign: "center", fontSize: 20, letterSpacing: 4, marginBottom: 10, boxSizing: "border-box", outline: "none" }}/>
+            
+            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, marginTop: 10 }}>{lang==="bn"?"রিকভারি শব্দ (পিন ভুলে গেলে কাজে লাগবে)":"Recovery Word (If you forget PIN)"}</p>
+            <input type="text" placeholder={lang==="bn"?"যেমন: প্রিয় রং, ডাকনাম":"e.g. Favorite color, Pet name"} value={recovery} onChange={e=>setRecovery(e.target.value)} style={{ width: "100%", padding: 12, borderRadius: 12, border: `1px solid ${TH.border}`, background: TH.bg, color: TH.text, fontSize: 14, marginBottom: 16, boxSizing: "border-box", outline: "none" }}/>
+
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={savePin} style={{ flex: 1, padding: 10, background: "#8b5cf6", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700 }}>Save</button>
               <button onClick={()=>setPinMode(false)} style={{ flex: 1, padding: 10, background: "transparent", color: TH.textMid, border: `1px solid ${TH.border}`, borderRadius: 10 }}>Cancel</button>
@@ -448,7 +526,7 @@ function TxModal({ data, saveTx, onClose, t, lang, isDark, TH, selStyle, showToa
           </div>
         )}
 
-        <input ref={amountRef} type="number" placeholder="0" value={f.amount} onChange={e => setF({...f, amount: e.target.value})} style={{ width: "100%", padding: 18, background: TH.bgInner, border: `2px solid ${f.amount ? "#8b5cf6" : TH.border}`, borderRadius: 20, fontSize: 36, fontWeight: 800, color: "#8b5cf6", textAlign: "center", outline: "none", marginBottom: 12, boxSizing: "border-box" }}/>
+        <input ref={amountRef} type="text" inputMode="numeric" placeholder="0" value={f.amount} onChange={e => setF({...f, amount: e.target.value.replace(/[^0-9]/g, '')})} style={{ width: "100%", padding: 18, background: TH.bgInner, border: `2px solid ${f.amount ? "#8b5cf6" : TH.border}`, borderRadius: 20, fontSize: 36, fontWeight: 800, color: "#8b5cf6", textAlign: "center", outline: "none", marginBottom: 12, boxSizing: "border-box" }}/>
         <input type="text" placeholder={lang==="bn"?"নোট (ঐচ্ছিক)":"Note (optional)"} value={f.note} onChange={e => setF({...f, note: e.target.value})} style={{ width: "100%", padding: 14, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 16, fontSize: 14, color: TH.text, outline: "none", marginBottom: 14, boxSizing: "border-box" }}/>
 
         <button onClick={submit} style={{ width: "100%", padding: 18, background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", color: "#fff", fontWeight: 800, borderRadius: 22, border: "none", cursor: "pointer", fontSize: 16, marginBottom: 8, boxShadow: "0 8px 20px rgba(139,92,246,0.3)" }}>{lang==="bn" ? "নিশ্চিত করুন ✓" : "Confirm ✓"}</button>
@@ -458,7 +536,7 @@ function TxModal({ data, saveTx, onClose, t, lang, isDark, TH, selStyle, showToa
   );
 }
 
-// ── HOME VIEW (Debts Alert Added) ──────────────────────────────────────
+// ── HOME VIEW ────────────────────────────────────────────────────────────
 function HomeView({ data, fmt, t, deleteTx, editTx, settings, toggleHide, isDark, TH, lang, getCategories, exportPNG, budgetAlerts, debtAlerts }) {
   const { hideBalance } = settings;
   const [search, setSearch] = useState("");
@@ -689,7 +767,7 @@ function AssetsView({ data, setData, fmt, t, isDark, TH, lang, selStyle, showToa
         {topUp.show && (
           <div style={{ padding: 16, background: TH.bgInner, borderRadius: 16, marginBottom: 16 }}>
             <select value={topUp.walletId} onChange={e => setTopUp({...topUp, walletId: e.target.value})} style={{ ...selStyle, ...inp, marginBottom: 10 }}>{data.wallets.map(w => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}</select>
-            <input type="number" placeholder="Amount" value={topUp.amount} onChange={e => setTopUp({...topUp, amount: e.target.value})} style={{ ...inp, marginBottom: 10 }}/>
+            <input type="text" inputMode="numeric" placeholder="Amount" value={topUp.amount} onChange={e => setTopUp({...topUp, amount: e.target.value.replace(/[^0-9]/g, '')})} style={{ ...inp, marginBottom: 10 }}/>
             <button onClick={handleTopUp} style={{ width: "100%", padding: 12, background: "#3b82f6", color: "#fff", fontWeight: 700, borderRadius: 12, border: "none" }}>Confirm TopUp</button>
           </div>
         )}
@@ -700,7 +778,7 @@ function AssetsView({ data, setData, fmt, t, isDark, TH, lang, selStyle, showToa
               <select value={transfer.from} onChange={e => setTransfer({...transfer, from: e.target.value})} style={{ ...selStyle, ...inp }}>{data.wallets.map(w => <option key={w.id} value={w.id}>From {w.name}</option>)}</select>
               <select value={transfer.to} onChange={e => setTransfer({...transfer, to: e.target.value})} style={{ ...selStyle, ...inp }}>{data.wallets.map(w => <option key={w.id} value={w.id}>To {w.name}</option>)}</select>
             </div>
-            <input type="number" placeholder="Amount" value={transfer.amount} onChange={e => setTransfer({...transfer, amount: e.target.value})} style={{ ...inp, marginBottom: 10 }}/>
+            <input type="text" inputMode="numeric" placeholder="Amount" value={transfer.amount} onChange={e => setTransfer({...transfer, amount: e.target.value.replace(/[^0-9]/g, '')})} style={{ ...inp, marginBottom: 10 }}/>
             <button onClick={handleTransfer} style={{ width: "100%", padding: 12, background: "#a855f7", color: "#fff", fontWeight: 700, borderRadius: 12, border: "none" }}>Confirm Transfer</button>
           </div>
         )}
@@ -725,7 +803,7 @@ function AssetsView({ data, setData, fmt, t, isDark, TH, lang, selStyle, showToa
         {debtForm.show && (
           <div style={{ marginBottom: 16, padding: 16, background: TH.bgInner, borderRadius: 20, display: "flex", flexDirection: "column", gap: 10 }}>
             <input placeholder="Person Name" value={debtForm.person} onChange={e => setDebtForm({...debtForm, person: e.target.value})} style={inp}/>
-            <input type="number" placeholder="Amount" value={debtForm.amount} onChange={e => setDebtForm({...debtForm, amount: e.target.value})} style={inp}/>
+            <input type="text" inputMode="numeric" placeholder="Amount" value={debtForm.amount} onChange={e => setDebtForm({...debtForm, amount: e.target.value.replace(/[^0-9]/g, '')})} style={inp}/>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div>
                 <p style={{ fontSize: 10, fontWeight: 700, color: TH.textMid, marginBottom: 5 }}>📅 Borrow Date</p>
@@ -777,7 +855,7 @@ function AssetsView({ data, setData, fmt, t, isDark, TH, lang, selStyle, showToa
 function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCategories, showToast }) {
   const [goalForm, setGoalForm] = useState({ show: false, id: "", name: "", target: "", icon: "🎯" });
   const [addFund, setAddFund] = useState({ id: "", amount: "" });
-  const [tab, setPlanTab] = useState("savings"); // "savings", "goals", "budgets"
+  const [tab, setPlanTab] = useState("savings"); 
   const [piggyAmount, setPiggyAmount] = useState("");
   const [piggyWallet, setPiggyWallet] = useState(data.wallets[0]?.id || "");
 
@@ -787,7 +865,6 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
     const w = data.wallets.find(x => x.id === piggyWallet);
     if(w.balance < n) return showToast("Insufficient balance in wallet", "error");
     
-    // Deduct from wallet & Add to savings
     const ws = data.wallets.map(x => x.id === piggyWallet ? {...x, balance: x.balance - n} : x);
     const newTx = { id: genId(), type: 'transfer', date: TODAY(), amount: n, walletId: piggyWallet, note: "Transferred to Piggy Bank 🐷" };
     
@@ -831,7 +908,7 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
           <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
             <div style={{ display: "flex", gap: 8 }}>
               <select value={piggyWallet} onChange={e=>setPiggyWallet(e.target.value)} style={{ ...selStyle, ...inp, flex: 1 }}>{data.wallets.map(w => <option key={w.id} value={w.id}>From {w.name}</option>)}</select>
-              <input type="number" placeholder="Amount" value={piggyAmount} onChange={e=>setPiggyAmount(e.target.value)} style={{ ...inp, flex: 1 }}/>
+              <input type="text" inputMode="numeric" placeholder="Amount" value={piggyAmount} onChange={e=>setPiggyAmount(e.target.value.replace(/[^0-9]/g, ''))} style={{ ...inp, flex: 1 }}/>
             </div>
             <button onClick={handlePiggySave} style={{ width: "100%", padding: 14, background: "#10b981", color: "#fff", fontWeight: 800, borderRadius: 12, border: "none", cursor: "pointer" }}>+ Add to Piggy Bank</button>
           </div>
@@ -844,14 +921,13 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
             <h3 style={{ fontWeight: 800, color: "#8b5cf6" }}>🏆 My Goals</h3>
             <button onClick={()=>setGoalForm({...goalForm, show: true})} style={{ padding: "8px 14px", background: "rgba(139,92,246,0.1)", color: "#8b5cf6", borderRadius: 12, border: "1px solid rgba(139,92,246,0.2)", fontWeight: 700, fontSize: 12 }}>+ New Goal</button>
           </div>
-          {/* Goal Forms and Map Logic Unchanged */}
           {goalForm.show && (
             <div style={{ padding: 18, background: TH.bgCard, borderRadius: 20, border: `1px solid ${TH.border}` }}>
               <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
                 <input type="text" placeholder="Emoji 🎯" value={goalForm.icon} onChange={e=>setGoalForm({...goalForm, icon: e.target.value})} style={{...inp, width: "25%", textAlign:"center"}}/>
                 <input type="text" placeholder="Goal Name" value={goalForm.name} onChange={e=>setGoalForm({...goalForm, name: e.target.value})} style={{...inp, width: "75%"}}/>
               </div>
-              <input type="number" placeholder="Target Amount" value={goalForm.target} onChange={e=>setGoalForm({...goalForm, target: e.target.value})} style={{...inp, marginBottom: 10}}/>
+              <input type="text" inputMode="numeric" placeholder="Target Amount" value={goalForm.target} onChange={e=>setGoalForm({...goalForm, target: e.target.value.replace(/[^0-9]/g, '')})} style={{...inp, marginBottom: 10}}/>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={saveGoal} style={{ flex: 1, padding: 12, background: "#8b5cf6", color: "#fff", fontWeight: 700, borderRadius: 12, border: "none" }}>Save</button>
                 <button onClick={()=>setGoalForm({show:false, id:"", name:"", target:"", icon:"🎯"})} style={{ flex: 1, padding: 12, background: "transparent", border: `1px solid ${TH.border}`, color: TH.textMid, fontWeight: 700, borderRadius: 12 }}>Cancel</button>
@@ -877,7 +953,7 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
                 <p style={{ fontSize: 12, fontWeight: 700, color: "#8b5cf6", marginBottom: 16 }}>{pct.toFixed(1)}% complete</p>
                 
                 <div style={{ display: "flex", gap: 10 }}>
-                  <input type="number" placeholder="Add Amount" value={addFund.id===g.id ? addFund.amount : ""} onChange={e=>setAddFund({id: g.id, amount: e.target.value})} style={inp}/>
+                  <input type="text" inputMode="numeric" placeholder="Add Amount" value={addFund.id===g.id ? addFund.amount : ""} onChange={e=>setAddFund({id: g.id, amount: e.target.value.replace(/[^0-9]/g, '')})} style={inp}/>
                   <button onClick={()=>handleFund(g.id)} style={{ padding: "12px 20px", background: "#8b5cf6", color: "#fff", fontWeight: 700, borderRadius: 12, border: "none" }}>Add</button>
                 </div>
               </div>
@@ -910,8 +986,8 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
                     <div style={{ height: "100%", width: `${pct}%`, background: over ? "#ef4444" : warn ? "#f59e0b" : cat.color, borderRadius: 99, transition: "width 0.7s" }}/>
                   </div>
                 )}
-                <input type="number" placeholder={lang==="bn" ? "মাসিক সীমা (০ = কোনো সীমা নেই)" : "Monthly limit (0 = no limit)"} value={lim || ""}
-                  onChange={e => setData({...data, budgets:{...data.budgets, [cat.id]:Number(e.target.value)||0}})}
+                <input type="text" inputMode="numeric" placeholder={lang==="bn" ? "মাসিক সীমা (০ = কোনো সীমা নেই)" : "Monthly limit (0 = no limit)"} value={lim || ""}
+                  onChange={e => setData({...data, budgets:{...data.budgets, [cat.id]:Number(e.target.value.replace(/[^0-9]/g, ''))||0}})}
                   style={{ ...inp, colorScheme: isDark ? "dark" : "light" }}/>
               </div>
             );
@@ -922,47 +998,44 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
   );
 }
 
-// ── GRAPHS VIEW (Income vs Expense Bar Chart Added) ────────────────────
+// ── GRAPHS VIEW (Income vs Expense Bar Chart) ──────────────────────────
 function GraphsView({ data, fmt, t, lang, isDark, TH, getCategories }) {
-  const [gTab, setGTab] = useState("pie"); // 'pie', 'week', 'month'
+  const [gTab, setGTab] = useState("pie"); 
 
-  // Processing Pie Chart (Expenses)
   const catData = getCategories("expense").map(cat => ({
     name: cat.label[lang] || cat.label.en, value: data.txs.filter(x=>x.type==="expense" && x.category===cat.id).reduce((s,e)=>s+e.amount,0), color: cat.color
   })).filter(x=>x.value>0);
 
-  // Processing Weekly Chart (Last 7 Days)
   const weeklyData = useMemo(() => {
     return Array.from({length: 7}).map((_, i) => {
       const d = new Date(); d.setDate(d.getDate() - (6 - i));
       const dateStr = d.toISOString().split('T')[0];
       const txs = data.txs.filter(tx => tx.date === dateStr);
       return { 
-        name: DAY_NAMES[lang][d.getDay()].substring(0,3), 
+        name: DAY_NAMES[lang==="bn"?"bn":"en"][d.getDay()].substring(0,3), 
         income: txs.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0), 
         expense: txs.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0) 
       };
     });
   }, [data.txs, lang]);
 
-  // Processing Monthly Chart (Current Year)
   const monthlyData = useMemo(() => {
     return MONTH_SHORT.en.map((_, i) => {
       const prefix = `${new Date().getFullYear()}-${String(i+1).padStart(2, '0')}`;
       const txs = data.txs.filter(tx => tx.date.startsWith(prefix));
       return { 
-        name: MONTH_SHORT[lang][i], 
+        name: MONTH_SHORT[lang==="bn"?"bn":"en"][i], 
         income: txs.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0), 
         expense: txs.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0) 
       };
     });
   }, [data.txs, lang]);
 
-  const customTooltip = ({ active, payload, label }) => {
+  const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
         <div style={{ background: TH.bgCard, border: `1px solid ${TH.border}`, padding: 12, borderRadius: 12 }}>
-          <p style={{ fontWeight: 800, marginBottom: 8 }}>{label}</p>
+          <p style={{ fontWeight: 800, marginBottom: 8, color: TH.text }}>{label}</p>
           {payload.map((p, i) => <p key={i} style={{ color: p.fill, fontSize: 12, fontWeight: 700 }}>{p.name === 'income' ? (lang==="bn"?"আয়: ":"Income: ") : (lang==="bn"?"ব্যয়: ":"Expense: ")} {fmt(p.value)}</p>)}
         </div>
       );
@@ -1008,8 +1081,8 @@ function GraphsView({ data, fmt, t, lang, isDark, TH, getCategories }) {
                 <BarChart data={gTab === "week" ? weeklyData : monthlyData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={TH.border} vertical={false}/>
                   <XAxis dataKey="name" tick={{ fill: TH.textMid, fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: TH.textMid, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v)=> v>1000 ? `${v/1000}k` : v} />
-                  <Tooltip content={<customTooltip/>} cursor={{ fill: TH.bgInner }}/>
+                  <YAxis tick={{ fill: TH.textMid, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v)=> v>=1000 ? `${v/1000}k` : v} />
+                  <Tooltip content={<CustomTooltip/>} cursor={{ fill: TH.bgInner }}/>
                   <Bar dataKey="income" fill="#10b981" radius={[4,4,0,0]} barSize={12} />
                   <Bar dataKey="expense" fill="#ef4444" radius={[4,4,0,0]} barSize={12} />
                 </BarChart>
