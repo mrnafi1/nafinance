@@ -89,6 +89,11 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const appRef = useRef(null);
 
+  // ── PWA INSTALL STATE ──
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstall, setShowInstall] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
   useEffect(() => { localStorage.setItem("nafinance_db_v8", JSON.stringify(data)); }, [data]);
   useEffect(() => { localStorage.setItem("nafinance_set_v8", JSON.stringify(settings)); }, [settings]);
 
@@ -102,6 +107,38 @@ export default function App() {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [settings.pinLock]);
+
+  // INSTALL PROMPT LOGIC
+  useEffect(() => {
+    // Check if already installed
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (isStandalone) return; 
+
+    // Check iOS
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(userAgent)) {
+      setIsIOS(true);
+      setShowInstall(true);
+    }
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstall(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') setShowInstall(false);
+      setDeferredPrompt(null);
+    }
+  };
 
   // AUTO-RECURRING LOGIC
   useEffect(() => {
@@ -251,6 +288,23 @@ export default function App() {
           <button onClick={() => setModal("settings")} style={{ padding: 9, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 12, cursor: "pointer", color: TH.textMid }}><Settings size={18}/></button>
         </div>
       </header>
+
+      {/* 🚀 INSTALL BANNER UI */}
+      {showInstall && (
+        <div style={{ maxWidth: 450, margin: "16px auto 0", background: "linear-gradient(135deg, #10b981, #059669)", borderRadius: 16, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#fff", boxShadow: "0 10px 25px rgba(16,185,129,0.3)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ background: "rgba(255,255,255,0.2)", padding: 8, borderRadius: 12 }}><Download size={18} color="#fff"/></div>
+            <div>
+              <h4 style={{ fontWeight: 800, fontSize: 13 }}>{lang==="bn"?"NaFinance অ্যাপ ইন্সটল করুন":"Install NaFinance App"}</h4>
+              <p style={{ fontSize: 10, opacity: 0.9 }}>{isIOS ? (lang==="bn"?"Share আইকনে ক্লিক করে 'Add to Home Screen' করুন":"Tap Share > Add to Home Screen") : (lang==="bn"?"অফলাইনে সহজে ব্যবহারের জন্য ইন্সটল করুন":"Install for faster offline access")}</p>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {!isIOS && <button onClick={handleInstallClick} style={{ padding: "8px 12px", background: "#fff", color: "#059669", fontWeight: 800, borderRadius: 10, border: "none", cursor: "pointer", fontSize: 12 }}>{lang==="bn"?"ডাউনলোড":"Install"}</button>}
+            <button onClick={() => setShowInstall(false)} style={{ background: "none", border: "none", color: "#fff", opacity: 0.7, cursor: "pointer" }}><X size={16}/></button>
+          </div>
+        </div>
+      )}
 
       <main style={{ maxWidth: 480, margin: "0 auto", padding: "20px 16px 140px" }}>
         {tab === "home"     && <HomeView data={data} fmt={fmt} t={t} deleteTx={deleteTx} editTx={(tx)=>{setEditTxData(tx);setModal("tx");}} settings={settings} toggleHide={() => setSettings({...settings, hideBalance: !settings.hideBalance})} isDark={isDark} TH={TH} lang={lang} getCategories={getCategories} exportPNG={exportPNG} budgetAlerts={budgetAlerts} debtAlerts={debtAlerts}/>}
