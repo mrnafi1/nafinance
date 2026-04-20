@@ -4,6 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid
 } from "recharts";
 import html2canvas from "html2canvas";
+// ❌ কোনো থার্ড-পার্টি টোস্ট ইমপোর্ট নেই, তাই কোনো এরর আসবে না!
 import {
   Plus, Trash2, Home, BarChart2, Settings, TrendingDown, TrendingUp,
   Users, X, Download, Printer, Eye, EyeOff, Search, 
@@ -45,7 +46,7 @@ const fmtMoney = (n, curr, lang) => {
 export default function App() {
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem("nafinance_db_master");
+      const saved = localStorage.getItem("nafinance_db_final");
       if (saved) return JSON.parse(saved);
     } catch(e) {}
     return {
@@ -57,7 +58,7 @@ export default function App() {
 
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem("nafinance_set_master");
+      const saved = localStorage.getItem("nafinance_set_final");
       if (saved) return JSON.parse(saved);
     } catch(e) {}
     return { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "", recoveryWord: "" };
@@ -70,12 +71,12 @@ export default function App() {
   const [showInstall, setShowInstall] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   
-  // 🚀 Custom Premium Toast State (No Packages Required)
+  // 🚀 Custom Premium Toast State (নিজস্ব টোস্ট, কোনো প্যাকেজ লাগবে না)
   const [toastMsg, setToastMsg] = useState(null);
   const appRef = useRef(null);
 
-  useEffect(() => { localStorage.setItem("nafinance_db_master", JSON.stringify(data)); }, [data]);
-  useEffect(() => { localStorage.setItem("nafinance_set_master", JSON.stringify(settings)); }, [settings]);
+  useEffect(() => { localStorage.setItem("nafinance_db_final", JSON.stringify(data)); }, [data]);
+  useEffect(() => { localStorage.setItem("nafinance_set_final", JSON.stringify(settings)); }, [settings]);
 
   useEffect(() => {
     const handleVisibility = () => { if (document.visibilityState === "hidden" && settings.pinLock) setIsAuthenticated(false); };
@@ -161,10 +162,10 @@ export default function App() {
   return (
     <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, fontFamily: "'Hind Siliguri', sans-serif", position: "relative" }}>
       
-      {/* 🚀 CUSTOM TOAST UI */}
+      {/* 🚀 CUSTOM TOAST UI (আপনার প্রিমিয়াম পপ-আপ) */}
       {toastMsg && (
-        <div style={{ position: "fixed", top: 30, left: "50%", transform: "translateX(-50%)", background: TH.bgCard, color: TH.text, padding: "14px 24px", borderRadius: 20, boxShadow: "0 10px 30px rgba(0,0,0,0.4)", zIndex: 9999, display: "flex", alignItems: "center", gap: 12, fontWeight: 800, fontSize: 15, border: `1px solid ${TH.border}` }}>
-          <div style={{ width: 12, height: 12, borderRadius: "50%", background: toastMsg.type === 'success' ? '#10b981' : toastMsg.type === 'info' ? '#3b82f6' : '#ef4444' }} />
+        <div style={{ position: "fixed", top: 40, left: "50%", transform: "translateX(-50%)", background: TH.bgCard, color: TH.text, padding: "14px 24px", borderRadius: 30, boxShadow: "0 10px 30px rgba(0,0,0,0.4)", zIndex: 9999, display: "flex", alignItems: "center", gap: 12, fontWeight: 800, fontSize: 15, border: `1px solid ${toastMsg.type === 'success' ? '#10b981' : '#ef4444'}`, animation: "fadeInDown 0.3s ease-out" }}>
+          <div style={{ width: 14, height: 14, borderRadius: "50%", background: toastMsg.type === 'success' ? '#10b981' : '#ef4444' }} />
           {toastMsg.msg}
         </div>
       )}
@@ -406,9 +407,11 @@ function AssetsView({ data, setData, fmt, TH, showToast }) {
 
 function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }) {
   const [subTab, setSubTab] = useState("vault");
+  
   const [saveAmount, setSaveAmount] = useState("");
   const [saveNote, setSaveNote] = useState("");
   const [saveWallet, setSaveWallet] = useState("w1");
+  
   const [goalForm, setGoalForm] = useState({ show: false, id: "", name: "", target: "", saved: "", icon: "🎯" });
   const [addFund, setAddFund] = useState({ id: "", amount: "", sourceId: "w1", note: "" });
 
@@ -612,14 +615,14 @@ function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }
 }
 
 function GraphsView({ data, fmt, TH, lang, getCategories }) {
-  const [gType, setGType] = useState("breakdown"); // breakdown, weekly, monthly
+  const [gType, setGType] = useState("breakdown");
   
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
        
-       <div style={{ display: "flex", background: TH.bgInner, padding: 6, borderRadius: 18 }}>
+       <div style={{ display: "flex", background: TH.bgCard, padding: 8, borderRadius: 20, border: `1px solid ${TH.border}` }}>
         {['breakdown', 'weekly', 'monthly'].map(t => (
-            <button key={t} onClick={()=>setGType(t)} style={{ flex: 1, padding: "14px 10px", borderRadius: 14, background: gType===t ? "#312e81" : "transparent", color: gType===t ? "#a78bfa" : TH.textMid, fontWeight: 800, border: "none", textTransform: "capitalize", fontSize: 13 }}>
+            <button key={t} onClick={()=>setGType(t)} style={{ flex: 1, padding: "14px 10px", borderRadius: 14, background: gType===t ? "rgba(139,92,246,0.15)" : "transparent", color: gType===t ? "#8b5cf6" : TH.textMid, fontWeight: 800, border: "none", textTransform: "capitalize", fontSize: 13 }}>
               {t === 'breakdown' && lang === 'bn' ? 'Breakdown' : t} 
             </button>
         ))}
@@ -815,7 +818,7 @@ function SettingsModal({ settings, setSettings, data, setData, onClose, TH, show
                    <div>
                       <h3 style={{ fontWeight: 900, fontSize: 18, color: TH.text }}>Mushfiqur Rahman Nafi</h3>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, color: TH.textMid, fontSize: 13, marginTop: 6, fontWeight: 600 }}><Mail size={14}/> mushfiqurnafi@gmail.com</div>
-                      <a href="https://www.linkedin.com/in/mushfiqur-nafi" target="_blank" style={{ display: "flex", alignItems: "center", gap: 6, color: "#3b82f6", fontSize: 13, marginTop: 6, textDecoration: "none", fontWeight: 800 }}><Link size={14}/> LinkedIn Profile</a>
+                      <a href="https://www.linkedin.com/in/mushfiqur-nafi" target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, color: "#3b82f6", fontSize: 13, marginTop: 6, textDecoration: "none", fontWeight: 800 }}><Link size={14}/> LinkedIn Profile</a>
                    </div>
                 </div>
              </div>
