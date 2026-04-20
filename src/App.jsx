@@ -1,14 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   BarChart, Bar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
-  XAxis, YAxis, CartesianGrid, Legend, AreaChart, Area, LineChart, Line
+  XAxis, Legend
 } from "recharts";
 import {
-  Plus, Trash2, Home, BarChart2, Settings, TrendingDown, TrendingUp,
-  Users, X, Download, Printer, Eye, EyeOff, Search, 
-  AlertTriangle, Landmark, Wallet, Lock, Calendar,
-  Camera, Sun, Moon, KeyRound, Edit3, CheckCircle2, History, PlusCircle,
-  DownloadCloud, UploadCloud, Code, Mail, ChevronDown, Filter, ExternalLink, Check, FileText, Edit
+  Plus, Trash2, Home, BarChart2, Settings,
+  Users, X, Download, Eye, EyeOff, Search, 
+  AlertTriangle, Landmark, Wallet, Lock, 
+  Sun, Moon, KeyRound, Edit3, Code, Check, FileText, Edit
 } from "lucide-react";
 
 const AUTHOR   = "Mushfiqur Rahman Nafi";
