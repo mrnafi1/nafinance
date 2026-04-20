@@ -4,13 +4,12 @@ import {
   XAxis, YAxis, CartesianGrid
 } from "recharts";
 import html2canvas from "html2canvas";
-import { Toaster, toast } from 'react-hot-toast';
 import {
   Plus, Trash2, Home, BarChart2, Settings, TrendingDown, TrendingUp,
   Users, X, Download, Printer, Eye, EyeOff, Search, 
   AlertTriangle, Landmark, Wallet, Lock, 
   Camera, Sun, Moon, KeyRound, Edit3, CheckCircle2, History, PlusCircle,
-  DownloadCloud, UploadCloud, Code, Linkedin, Mail, ChevronDown
+  DownloadCloud, UploadCloud, Code, Link, Mail, ChevronDown
 } from "lucide-react";
 
 // ── CONFIG ─────────────────────────────────────────────────────────────
@@ -70,6 +69,9 @@ export default function App() {
   const [editTxData, setEditTxData] = useState(null); 
   const [showInstall, setShowInstall] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+  
+  // 🚀 Custom Premium Toast State (No Packages Required)
+  const [toastMsg, setToastMsg] = useState(null);
   const appRef = useRef(null);
 
   useEffect(() => { localStorage.setItem("nafinance_db_master", JSON.stringify(data)); }, [data]);
@@ -96,29 +98,20 @@ export default function App() {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') setShowInstall(false);
     } else {
-      toast("ব্রাউজারের মেনু থেকে 'Install App' এ ক্লিক করুন!", { icon: '💡' });
+      showToast("ব্রাউজারের মেনু থেকে 'Install App' এ ক্লিক করুন!", "info");
     }
   };
 
-  const showToast = (msg, type="error") => {
-    const style = {
-      borderRadius: '16px',
-      background: settings.theme === 'dark' ? '#1e293b' : '#ffffff',
-      color: settings.theme === 'dark' ? '#f8fafc' : '#0f172a',
-      fontWeight: 800,
-      boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-      padding: '12px 20px'
-    };
-    if (type === "success") toast.success(msg, { style });
-    else if (type === "info") toast(msg, { icon: '💡', style });
-    else toast.error(msg, { style });
-  };
-
-  // Theming (Matched exactly with your screenshots)
   const isDark = settings.theme === "dark";
   const TH = isDark 
     ? { bg: "#0b0f19", bgCard: "#131b2f", bgInner: "#1e293b", border: "rgba(139,92,246,0.15)", text: "#f8fafc", textMid: "#94a3b8" }
     : { bg: "#f8fafc", bgCard: "#ffffff", bgInner: "#f1f5f9", border: "#e2e8f0", text: "#0f172a", textMid: "#64748b" };
+
+  // 🚀 CUSTOM PREMIUM TOAST FUNCTION
+  const showToast = (msg, type="error") => {
+    setToastMsg({ msg, type });
+    setTimeout(() => setToastMsg(null), 2500);
+  };
 
   const fmt = n => settings.hideBalance ? "••••" : fmtMoney(n, settings.curr, settings.lang);
   const getCategories = (type) => [...BASE_CATEGORIES[type], ...(data.customCategories[type] || [])];
@@ -166,8 +159,15 @@ export default function App() {
   if (!isAuthenticated) return <PinScreen settings={settings} setSettings={setSettings} onSuccess={() => setIsAuthenticated(true)} TH={TH} showToast={showToast} />;
 
   return (
-    <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, fontFamily: "'Hind Siliguri', sans-serif" }}>
-      <Toaster position="top-center" reverseOrder={false} />
+    <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, fontFamily: "'Hind Siliguri', sans-serif", position: "relative" }}>
+      
+      {/* 🚀 CUSTOM TOAST UI */}
+      {toastMsg && (
+        <div style={{ position: "fixed", top: 30, left: "50%", transform: "translateX(-50%)", background: TH.bgCard, color: TH.text, padding: "14px 24px", borderRadius: 20, boxShadow: "0 10px 30px rgba(0,0,0,0.4)", zIndex: 9999, display: "flex", alignItems: "center", gap: 12, fontWeight: 800, fontSize: 15, border: `1px solid ${TH.border}` }}>
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: toastMsg.type === 'success' ? '#10b981' : toastMsg.type === 'info' ? '#3b82f6' : '#ef4444' }} />
+          {toastMsg.msg}
+        </div>
+      )}
       
       <header style={{ position: "sticky", top: 0, zIndex: 50, background: isDark ? "rgba(11,15,25,0.85)" : "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${TH.border}`, padding: "12px 20px" }}>
         <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -256,7 +256,7 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, activeAlerts,
             <div key={tx.id} style={{ padding: 18, background: TH.bgCard, borderRadius: 24, border: `1px solid ${TH.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
                 <div style={{ width: 50, height: 50, borderRadius: 16, background: cat.bg, border: `1px solid ${cat.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{cat.icon}</div>
-                <div><p style={{ fontWeight: 800, fontSize: 16 }}>{tx.note || cat.label[settings.lang]}</p><p style={{ fontSize: 12, color: TH.textMid, fontWeight: 700, marginTop: 4 }}>{tx.date}</p></div>
+                <div><p style={{ fontWeight: 800, fontSize: 16 }}>{tx.note || cat.label[settings.lang] || cat.label.en}</p><p style={{ fontSize: 12, color: TH.textMid, fontWeight: 700, marginTop: 4 }}>{tx.date}</p></div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <p style={{ fontWeight: 900, fontSize: 16, color: tx.type === "income" ? "#10b981" : "#ef4444" }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
@@ -614,11 +614,9 @@ function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }
 function GraphsView({ data, fmt, TH, lang, getCategories }) {
   const [gType, setGType] = useState("breakdown"); // breakdown, weekly, monthly
   
-  // Custom design matching your screenshot #2 exactly
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
        
-       {/* EXACT MATCH FOR SCREENSHOT 2 TABS */}
        <div style={{ display: "flex", background: TH.bgInner, padding: 6, borderRadius: 18 }}>
         {['breakdown', 'weekly', 'monthly'].map(t => (
             <button key={t} onClick={()=>setGType(t)} style={{ flex: 1, padding: "14px 10px", borderRadius: 14, background: gType===t ? "#312e81" : "transparent", color: gType===t ? "#a78bfa" : TH.textMid, fontWeight: 800, border: "none", textTransform: "capitalize", fontSize: 13 }}>
@@ -627,7 +625,6 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
         ))}
        </div>
 
-       {/* EXACT MATCH FOR SCREENSHOT 2 CARD */}
        <div style={{ padding: 30, background: TH.bgCard, borderRadius: 32, border: `1px solid ${TH.border}`, minHeight: 400, display: "flex", flexDirection: "column" }}>
           <h4 style={{ fontWeight: 900, marginBottom: 30, fontSize: 20 }}>খরচের বিভাজন</h4>
           
@@ -635,7 +632,6 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: TH.textMid, fontWeight: 800, fontSize: 16 }}>No Data</div>
           ) : (
              <div style={{ height: 300 }}>
-               {/* Chart Logic based on Tab */}
                {gType === "breakdown" && (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -717,7 +713,6 @@ function PinScreen({ settings, setSettings, onSuccess, TH, showToast }) {
 
   if (isForgot) return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: TH.bg, padding: 25, textAlign: "center" }}>
-      <Toaster position="top-center" reverseOrder={false} />
       <KeyRound size={60} color="#f59e0b" style={{ marginBottom: 20 }}/>
       <h2 style={{ fontWeight: 900, fontSize: 24 }}>পিন রিকভারি</h2>
       <p style={{ fontSize: 14, color: TH.textMid, marginTop: 10 }}>আপনার সেট করা গোপন শব্দটি লিখুন</p>
@@ -732,7 +727,6 @@ function PinScreen({ settings, setSettings, onSuccess, TH, showToast }) {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: TH.bg }}>
-      <Toaster position="top-center" reverseOrder={false} />
       <Lock size={55} color="#8b5cf6" style={{ marginBottom: 30 }}/>
       <div style={{ display: "flex", gap: 20, marginBottom: 50 }}>
         {[1,2,3,4].map(i => <div key={i} style={{ width: 20, height: 20, borderRadius: "50%", background: input.length >= i ? "#8b5cf6" : TH.border, boxShadow: input.length >= i ? "0 0 15px #8b5cf6" : "none", transition: "all 0.2s" }} />)}
@@ -752,11 +746,8 @@ function PinScreen({ settings, setSettings, onSuccess, TH, showToast }) {
 }
 
 function SettingsModal({ settings, setSettings, data, setData, onClose, TH, showToast }) {
-  const [view, setView] = useState("main"); // main, pin, category
-  
-  // Custom Category Add State
+  const [view, setView] = useState("main"); 
   const [newCat, setNewCat] = useState({ type: "expense", name: "", icon: "📦", color: "#8b5cf6" });
-  // Pin Setup State
   const [newPin, setNewPin] = useState("");
   const [rec, setRec] = useState("");
 
@@ -817,7 +808,6 @@ function SettingsModal({ settings, setSettings, data, setData, onClose, TH, show
         
         {view === "main" && (
            <>
-             {/* 🚀 EXACT MATCH: Developer Info Card (Screenshot 1) */}
              <div style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1))", padding: 25, borderRadius: 28, marginBottom: 20, border: `1px solid rgba(139,92,246,0.2)` }}>
                 <p style={{ fontSize: 11, fontWeight: 800, color: "#8b5cf6", textTransform: "uppercase", marginBottom: 15, letterSpacing: 1 }}>Developer Info</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
@@ -825,12 +815,11 @@ function SettingsModal({ settings, setSettings, data, setData, onClose, TH, show
                    <div>
                       <h3 style={{ fontWeight: 900, fontSize: 18, color: TH.text }}>Mushfiqur Rahman Nafi</h3>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, color: TH.textMid, fontSize: 13, marginTop: 6, fontWeight: 600 }}><Mail size={14}/> mushfiqurnafi@gmail.com</div>
-                      <a href="https://www.linkedin.com/in/mushfiqur-nafi" target="_blank" style={{ display: "flex", alignItems: "center", gap: 6, color: "#3b82f6", fontSize: 13, marginTop: 6, textDecoration: "none", fontWeight: 800 }}><Linkedin size={14}/> LinkedIn Profile</a>
+                      <a href="https://www.linkedin.com/in/mushfiqur-nafi" target="_blank" style={{ display: "flex", alignItems: "center", gap: 6, color: "#3b82f6", fontSize: 13, marginTop: 6, textDecoration: "none", fontWeight: 800 }}><Link size={14}/> LinkedIn Profile</a>
                    </div>
                 </div>
              </div>
 
-             {/* 🚀 EXACT MATCH: Grid Buttons (Screenshot 1) */}
              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <button onClick={handleBackup} style={{...btnStyle, color: "#3b82f6", background: "rgba(59,130,246,0.1)", border: "none"}}><DownloadCloud size={18}/> Backup Data</button>
                 <label style={{...btnStyle, color: "#10b981", background: "rgba(16,185,129,0.1)", border: "none"}}><UploadCloud size={18}/> Restore Data <input type="file" accept=".json" style={{display:"none"}} onChange={handleRestore}/></label>
@@ -846,7 +835,6 @@ function SettingsModal({ settings, setSettings, data, setData, onClose, TH, show
                 <button onClick={()=>setSettings({...settings, theme: "dark"})} style={{...btnStyle, border: "none", background: settings.theme==="dark"?"#8b5cf6":TH.bgInner, color: settings.theme==="dark"?"#fff":TH.textMid}}><Moon size={18}/> Dark</button>
              </div>
 
-             {/* 🚀 Dropdowns matching screenshot 1 */}
              <div style={{ position: "relative", marginBottom: 12 }}>
                 <select value={settings.lang} onChange={e=>setSettings({...settings, lang: e.target.value})} style={{ width: "100%", padding: 18, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 800, fontSize: 15, appearance: "none", outline: "none" }}>
                    <option value="bn">বাংলা (Bengali)</option><option value="en">English</option>
