@@ -160,7 +160,10 @@ export default function App() {
   const exportPNG = async () => {
     if (!appRef.current) return;
     const canvas = await html2canvas(appRef.current, { backgroundColor: TH.bg });
-    const link = document.createElement('a'); link.download = `NaFinance_${TODAY()}.png`; link.href = canvas.toDataURL(); link.click();
+    const link = document.createElement('a'); 
+    link.download = `NaFinance_${TODAY()}.png`; 
+    link.href = canvas.toDataURL(); 
+    link.click();
   };
 
   if (!isAuthenticated) return <PinScreen settings={settings} setSettings={setSettings} onSuccess={() => setIsAuthenticated(true)} TH={TH} showToast={showToast} />;
@@ -224,7 +227,10 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, activeAlerts,
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       {activeAlerts.map(cat => (
         <div key={cat.id} style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.4)", padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
-          <div style={{display:"flex", alignItems:"center", gap: 8}}><AlertTriangle size={18} color="#f59e0b"/> <span>{cat.icon} <b>{cat.label[settings.lang]}</b> বাজেট ৮০% ছাড়িয়েছে!</span></div>
+          <div style={{display:"flex", alignItems:"center", gap: 8}}>
+            <AlertTriangle size={18} color="#f59e0b"/> 
+            <span>{cat.icon} <b>{cat.label[settings.lang]}</b> বাজেট ৮০% ছাড়িয়েছে!</span>
+          </div>
           <button onClick={()=>dismissAlert(cat.id)} style={{background:"none", border:"none", color: TH.textMid, cursor:"pointer", padding: 5}}><X size={18}/></button>
         </div>
       ))}
@@ -233,8 +239,13 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, activeAlerts,
         <p style={{ fontSize: 11, opacity: 0.6, textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 700 }}>মোট ব্যালেন্স</p>
         <h2 style={{ fontSize: 44, fontWeight: 900, margin: "8px 0" }}>{fmt(total)}</h2>
         <div style={{ display: "flex", gap: 15, marginTop: 15 }}>
-          <div style={{ flex: 1, background: "rgba(255,255,255,0.08)", padding: "12px 15px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)" }}><p style={{ fontSize: 9, opacity: 0.6, fontWeight: 700 }}>আজকের খরচ</p><p style={{ fontSize: 16, fontWeight: 800, color: "#fca5a5" }}>{fmt(spentToday)}</p></div>
-          <button onClick={()=>setSettings({...settings, hideBalance: !settings.hideBalance})} style={{ padding: 12, background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 16, color: "#fff" }}>{settings.hideBalance ? <Eye size={20}/> : <EyeOff size={20}/>}</button>
+          <div style={{ flex: 1, background: "rgba(255,255,255,0.08)", padding: "12px 15px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)" }}>
+            <p style={{ fontSize: 9, opacity: 0.6, fontWeight: 700 }}>আজকের খরচ</p>
+            <p style={{ fontSize: 16, fontWeight: 800, color: "#fca5a5" }}>{fmt(spentToday)}</p>
+          </div>
+          <button onClick={()=>setSettings({...settings, hideBalance: !settings.hideBalance})} style={{ padding: 12, background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 16, color: "#fff" }}>
+            {settings.hideBalance ? <Eye size={20}/> : <EyeOff size={20}/>}
+          </button>
         </div>
       </div>
       
@@ -243,17 +254,31 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, activeAlerts,
         <button onClick={()=>window.print()} style={{ padding:12, borderRadius:12, background:TH.bgInner, border:`1px solid ${TH.border}`, color:TH.text, fontWeight:700, fontSize:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}><Printer size={14}/> PDF রিপোর্ট</button>
       </div>
       
-      <div style={{ display: "flex", alignItems: "center", gap: 12, background: TH.bgInner, padding: "12px 18px", borderRadius: 18 }}><Search size={18} color={TH.textMid}/><input type="text" placeholder="লেনদেন খুঁজুন..." value={search} onChange={e=>setSearch(e.target.value)} style={{ background:"none", border:"none", color:TH.text, outline:"none", flex:1, fontSize:15, fontWeight:600 }}/></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, background: TH.bgInner, padding: "12px 18px", borderRadius: 18 }}>
+        <Search size={18} color={TH.textMid}/>
+        <input type="text" placeholder="লেনদেন খুঁজুন..." value={search} onChange={e=>setSearch(e.target.value)} style={{ background:"none", border:"none", color:TH.text, outline:"none", flex:1, fontSize:15, fontWeight:600 }}/>
+      </div>
       
       <h3 style={{ fontWeight: 800, fontSize: 18 }}>সাম্প্রতিক লেনদেন</h3>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {!(data.txs||[]).length && (<div style={{ textAlign: "center", padding: "40px 20px", background: TH.bgCard, borderRadius: 20, border: `1px solid ${TH.border}` }}><span style={{ fontSize: 48, display: "block", marginBottom: 10 }}>📭</span><p style={{ color: TH.textMid, fontWeight: 700 }}>এখনো কোনো লেনদেন যোগ হয়নি</p></div>)}
+        {!(data.txs||[]).length && (
+          <div style={{ textAlign: "center", padding: "40px 20px", background: TH.bgCard, borderRadius: 20, border: `1px solid ${TH.border}` }}>
+            <span style={{ fontSize: 48, display: "block", marginBottom: 10 }}>📭</span>
+            <p style={{ color: TH.textMid, fontWeight: 700 }}>এখনো কোনো লেনদেন যোগ হয়নি</p>
+          </div>
+        )}
         {data.txs.filter(x => x.note?.toLowerCase().includes(search.toLowerCase())).slice(0, 20).map(tx => {
           const cat = getCategories(tx.type).find(c => c.id === tx.category) || {icon:"📝", color:"#ccc", bg:"#ccc20", border:"#ccc50", label:{bn:"অন্যান্য", en:"Other"}};
           return (
             <div key={tx.id} style={{ padding: 16, background: TH.bgCard, borderRadius: 22, border: `1px solid ${TH.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}><div style={{ width: 48, height: 48, borderRadius: 15, background: cat.bg, border: `1px solid ${cat.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{cat.icon}</div><div><p style={{ fontWeight: 800, fontSize: 15 }}>{tx.note || cat.label[settings.lang]}</p><p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600 }}>{tx.date}</p></div></div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}><p style={{ fontWeight: 900, fontSize: 15, color: tx.type === "income" ? "#10b981" : "#ef4444" }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p><button onClick={()=>deleteTx(tx)} style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)", border: "none", padding: 8, borderRadius: 10 }}><Trash2 size={16}/></button></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 15, background: cat.bg, border: `1px solid ${cat.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{cat.icon}</div>
+                <div><p style={{ fontWeight: 800, fontSize: 15 }}>{tx.note || cat.label[settings.lang]}</p><p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600 }}>{tx.date}</p></div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <p style={{ fontWeight: 900, fontSize: 15, color: tx.type === "income" ? "#10b981" : "#ef4444" }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
+                <button onClick={()=>deleteTx(tx)} style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)", border: "none", padding: 8, borderRadius: 10 }}><Trash2 size={16}/></button>
+              </div>
             </div>
           );
         })}
@@ -269,31 +294,33 @@ function AssetsView({ data, setData, fmt, TH, showToast }) {
   const handleAddDebt = () => {
     const amt = Number(debtForm.amount);
     if(!debtForm.person || !amt) return showToast("সঠিক তথ্য দিন", "error");
+    
     let newWallets = [...data.wallets];
     let newSavings = { ...(data.savings || { balance: 0, history: [] }) };
     let newTxs = [...data.txs];
 
     if (debtForm.type === "lend") {
       if (debtForm.sourceId === "savings") {
-        if (newSavings.balance < amt) return showToast("সেভিংস-এ টাকা নেই!", "error");
+        if (newSavings.balance < amt) return showToast("সেভিংস-এ পর্যাপ্ত টাকা নেই!", "error");
         newSavings.balance -= amt;
-        newSavings.history.unshift({ id: genId(), date: TODAY(), amount: amt, type: 'withdraw', note: `Lent to ${debtForm.person}` });
+        newSavings.history = [{ id: genId(), date: TODAY(), amount: amt, type: 'withdraw', note: `Lent to ${debtForm.person}` }, ...(newSavings.history || [])];
       } else {
         const wIdx = newWallets.findIndex(w => w.id === debtForm.sourceId);
-        if (newWallets[wIdx].balance < amt) return showToast("ওয়ালেটে টাকা নেই!", "error");
+        if (wIdx === -1 || newWallets[wIdx].balance < amt) return showToast("ওয়ালেটে পর্যাপ্ত টাকা নেই!", "error");
         newWallets[wIdx].balance -= amt;
-        newTxs.unshift({ id: genId(), type: 'expense', date: TODAY(), amount: amt, category: 'other_ex', walletId: debtForm.sourceId, note: `Lent to ${debtForm.person}` });
+        newTxs = [{ id: genId(), type: 'expense', date: TODAY(), amount: amt, category: 'other_ex', walletId: debtForm.sourceId, note: `Lent to ${debtForm.person}` }, ...newTxs];
       }
     } else {
       if (debtForm.sourceId === "savings") {
         newSavings.balance += amt;
-        newSavings.history.unshift({ id: genId(), date: TODAY(), amount: amt, type: 'deposit', note: `Borrowed from ${debtForm.person}` });
+        newSavings.history = [{ id: genId(), date: TODAY(), amount: amt, type: 'deposit', note: `Borrowed from ${debtForm.person}` }, ...(newSavings.history || [])];
       } else {
         const wIdx = newWallets.findIndex(w => w.id === debtForm.sourceId);
         newWallets[wIdx].balance += amt;
-        newTxs.unshift({ id: genId(), type: 'income', date: TODAY(), amount: amt, category: 'other_in', walletId: debtForm.sourceId, note: `Borrowed from ${debtForm.person}` });
+        newTxs = [{ id: genId(), type: 'income', date: TODAY(), amount: amt, category: 'other_in', walletId: debtForm.sourceId, note: `Borrowed from ${debtForm.person}` }, ...newTxs];
       }
     }
+    
     setData({ ...data, wallets: newWallets, savings: newSavings, txs: newTxs, debts: [{...debtForm, id: genId(), amount: amt}, ...data.debts] });
     setDebtForm({ show: false, person: "", amount: "", type: "lend", date: TODAY(), sourceId: "w1" });
     showToast("ধার যুক্ত হয়েছে", "success");
@@ -302,30 +329,31 @@ function AssetsView({ data, setData, fmt, TH, showToast }) {
   const handleSettleDebt = () => {
     const amt = settleForm.debt.amount;
     let newWallets = [...data.wallets];
-    let newSavings = { ...data.savings };
+    let newSavings = { ...(data.savings || { balance: 0, history: [] }) };
     let newTxs = [...data.txs];
 
     if (settleForm.debt.type === "lend") {
       if (settleForm.targetId === "savings") {
         newSavings.balance += amt;
-        newSavings.history.unshift({ id: genId(), date: TODAY(), amount: amt, type: 'deposit', note: `Repaid by ${settleForm.debt.person}` });
+        newSavings.history = [{ id: genId(), date: TODAY(), amount: amt, type: 'deposit', note: `Repaid by ${settleForm.debt.person}` }, ...(newSavings.history || [])];
       } else {
         const wIdx = newWallets.findIndex(w => w.id === settleForm.targetId);
         newWallets[wIdx].balance += amt;
-        newTxs.unshift({ id: genId(), type: 'income', date: TODAY(), amount: amt, category: 'other_in', walletId: settleForm.targetId, note: `Repaid by ${settleForm.debt.person}` });
+        newTxs = [{ id: genId(), type: 'income', date: TODAY(), amount: amt, category: 'other_in', walletId: settleForm.targetId, note: `Repaid by ${settleForm.debt.person}` }, ...newTxs];
       }
     } else {
       if (settleForm.targetId === "savings") {
         if (newSavings.balance < amt) return showToast("সেভিংস-এ টাকা নেই!", "error");
         newSavings.balance -= amt;
-        newSavings.history.unshift({ id: genId(), date: TODAY(), amount: amt, type: 'withdraw', note: `Repaid to ${settleForm.debt.person}` });
+        newSavings.history = [{ id: genId(), date: TODAY(), amount: amt, type: 'withdraw', note: `Repaid to ${settleForm.debt.person}` }, ...(newSavings.history || [])];
       } else {
         const wIdx = newWallets.findIndex(w => w.id === settleForm.targetId);
-        if (newWallets[wIdx].balance < amt) return showToast("ওয়ালেটে টাকা নেই!", "error");
+        if (wIdx === -1 || newWallets[wIdx].balance < amt) return showToast("ওয়ালেটে টাকা নেই!", "error");
         newWallets[wIdx].balance -= amt;
-        newTxs.unshift({ id: genId(), type: 'expense', date: TODAY(), amount: amt, category: 'other_ex', walletId: settleForm.targetId, note: `Repaid to ${settleForm.debt.person}` });
+        newTxs = [{ id: genId(), type: 'expense', date: TODAY(), amount: amt, category: 'other_ex', walletId: settleForm.targetId, note: `Repaid to ${settleForm.debt.person}` }, ...newTxs];
       }
     }
+    
     setData({ ...data, wallets: newWallets, savings: newSavings, txs: newTxs, debts: data.debts.filter(d => d.id !== settleForm.debt.id) });
     setSettleForm({ show: false, debt: null, targetId: "w1" });
     showToast("হিসাব ক্লিয়ার হয়েছে!", "success");
@@ -335,16 +363,28 @@ function AssetsView({ data, setData, fmt, TH, showToast }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <h3 style={{ fontWeight: 800, fontSize: 18 }}>আপনার ওয়ালেট</h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {data.wallets.map(w => (<div key={w.id} style={{ padding: 22, background: TH.bgCard, borderRadius: 24, border: `1px solid ${TH.border}` }}><span style={{ fontSize: 28 }}>{w.icon}</span><p style={{ fontSize: 11, fontWeight: 700, color: TH.textMid, marginTop: 12 }}>{w.name}</p><p style={{ fontSize: 20, fontWeight: 900 }}>{fmt(w.balance)}</p></div>))}
+        {data.wallets.map(w => (
+          <div key={w.id} style={{ padding: 22, background: TH.bgCard, borderRadius: 24, border: `1px solid ${TH.border}` }}>
+            <span style={{ fontSize: 28 }}>{w.icon}</span>
+            <p style={{ fontSize: 11, fontWeight: 700, color: TH.textMid, marginTop: 12 }}>{w.name}</p>
+            <p style={{ fontSize: 20, fontWeight: 900 }}>{fmt(w.balance)}</p>
+          </div>
+        ))}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 15 }}><h3 style={{ fontWeight: 800, fontSize: 18 }}>ধার-দেনা</h3><button onClick={()=>setDebtForm({...debtForm, show: !debtForm.show})} style={{ padding: "8px 16px", borderRadius: 12, background: "#8b5cf6", color: "#fff", border: "none", fontSize: 13, fontWeight: 800 }}>+ নতুন ধার</button></div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 15 }}>
+        <h3 style={{ fontWeight: 800, fontSize: 18 }}>ধার-দেনা</h3>
+        <button onClick={()=>setDebtForm({...debtForm, show: !debtForm.show})} style={{ padding: "8px 16px", borderRadius: 12, background: "#8b5cf6", color: "#fff", border: "none", fontSize: 13, fontWeight: 800 }}>+ নতুন ধার</button>
+      </div>
       
       {debtForm.show && (
         <div style={{ padding: 20, background: TH.bgCard, borderRadius: 24, border: `1.5px dashed #8b5cf6`, display: "flex", flexDirection: "column", gap: 12 }}>
           <input type="text" placeholder="ব্যক্তির নাম" value={debtForm.person} onChange={e=>setDebtForm({...debtForm, person: e.target.value})} style={{ padding: 14, borderRadius: 12, background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.text, fontWeight: 600, outline:"none" }} />
           <input type="number" placeholder="টাকার পরিমাণ" value={debtForm.amount} onChange={e=>setDebtForm({...debtForm, amount: e.target.value})} style={{ padding: 14, borderRadius: 12, background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.text, fontWeight: 600, outline:"none" }} />
-          <select value={debtForm.type} onChange={e=>setDebtForm({...debtForm, type: e.target.value})} style={{ padding: 14, borderRadius: 12, background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.text, fontWeight: 600, outline:"none" }}><option value="lend">আমি পাবো (Lend)</option><option value="borrow">আমি দেবো (Borrow)</option></select>
+          <select value={debtForm.type} onChange={e=>setDebtForm({...debtForm, type: e.target.value})} style={{ padding: 14, borderRadius: 12, background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.text, fontWeight: 600, outline:"none" }}>
+            <option value="lend">আমি পাবো (Lend)</option>
+            <option value="borrow">আমি দেবো (Borrow)</option>
+          </select>
           <select value={debtForm.sourceId} onChange={e=>setDebtForm({...debtForm, sourceId: e.target.value})} style={{ padding: 14, borderRadius: 12, background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.text, fontWeight: 600, outline:"none" }}>
             <option value="savings">🏦 সেভিংস ভল্ট থেকে</option>
             {data.wallets.map(w => <option key={w.id} value={w.id}>{w.icon} {w.name} থেকে</option>)}
@@ -360,15 +400,24 @@ function AssetsView({ data, setData, fmt, TH, showToast }) {
               <option value="savings">🏦 সেভিংস ভল্ট</option>
               {data.wallets.map(w => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}
             </select>
-            <div style={{ display: "flex", gap: 10 }}><button onClick={handleSettleDebt} style={{ flex: 1, padding: 15, borderRadius: 14, background: "#10b981", color: "#fff", border: "none", fontWeight: 800 }}>Confirm</button><button onClick={()=>setSettleForm({show: false, debt: null, targetId: "w1"})} style={{ flex: 1, padding: 15, borderRadius: 14, background: "transparent", color: TH.textMid, border: `1px solid ${TH.border}`, fontWeight: 800 }}>Cancel</button></div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={handleSettleDebt} style={{ flex: 1, padding: 15, borderRadius: 14, background: "#10b981", color: "#fff", border: "none", fontWeight: 800 }}>Confirm</button>
+              <button onClick={()=>setSettleForm({show: false, debt: null, targetId: "w1"})} style={{ flex: 1, padding: 15, borderRadius: 14, background: "transparent", color: TH.textMid, border: `1px solid ${TH.border}`, fontWeight: 800 }}>Cancel</button>
+            </div>
          </div>
       )}
       
       {!(data.debts||[]).length && <p style={{ textAlign: "center", color: TH.textMid, fontSize: 13, marginTop: 10 }}>কোনো ধার-দেনার রেকর্ড নেই</p>}
       {data.debts.map(d => (
         <div key={d.id} style={{ padding: 18, background: TH.bgCard, borderRadius: 22, border: `1px solid ${TH.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}><div style={{ width: 42, height: 42, borderRadius: "50%", background: d.type==="lend"?"#10b98115":"#ef444415", display: "flex", alignItems: "center", justifyContent: "center" }}><Users size={18} color={d.type==="lend"?"#10b981":"#ef4444"}/></div><div><p style={{ fontWeight: 800, fontSize: 15 }}>{d.person}</p><p style={{ fontSize: 11, color: TH.textMid }}>{d.date}</p></div></div>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}><p style={{ fontWeight: 900, fontSize: 15, color: d.type === "lend" ? "#10b981" : "#ef4444" }}>{fmt(d.amount)}</p><button onClick={()=>setSettleForm({ show: true, debt: d, targetId: "w1" })} style={{ padding: "6px 12px", background: "rgba(16,185,129,0.1)", color: "#10b981", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Settle ✓</button></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 42, height: 42, borderRadius: "50%", background: d.type==="lend"?"#10b98115":"#ef444415", display: "flex", alignItems: "center", justifyContent: "center" }}><Users size={18} color={d.type==="lend"?"#10b981":"#ef4444"}/></div>
+            <div><p style={{ fontWeight: 800, fontSize: 15 }}>{d.person}</p><p style={{ fontSize: 11, color: TH.textMid }}>{d.date}</p></div>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <p style={{ fontWeight: 900, fontSize: 15, color: d.type === "lend" ? "#10b981" : "#ef4444" }}>{fmt(d.amount)}</p>
+            <button onClick={()=>setSettleForm({ show: true, debt: d, targetId: "w1" })} style={{ padding: "6px 12px", background: "rgba(16,185,129,0.1)", color: "#10b981", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Settle ✓</button>
+          </div>
         </div>
       ))}
     </div>
@@ -378,16 +427,16 @@ function AssetsView({ data, setData, fmt, TH, showToast }) {
 function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }) {
   const [subTab, setSubTab] = useState("vault");
   
-  // 🚀 SAVINGS 
+  // SAVINGS 
   const [saveAmount, setSaveAmount] = useState("");
   const [saveNote, setSaveNote] = useState("");
   const [saveWallet, setSaveWallet] = useState("w1");
   
-  // 🚀 GOALS
+  // GOALS
   const [goalForm, setGoalForm] = useState({ show: false, id: "", name: "", target: "", saved: "", icon: "🎯" });
   const [addFund, setAddFund] = useState({ id: "", amount: "", sourceId: "w1", note: "" });
   
-  // 🚀 BUDGET CATEGORY
+  // BUDGET CATEGORY
   const [catForm, setCatForm] = useState({ show: false, name: "", icon: "📦", color: "#8b5cf6" });
 
   const handleSaveAction = (type) => {
@@ -404,23 +453,22 @@ function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }
       newWallets[wIdx].balance -= n;
       newSavings.balance += n;
       const finalNote = saveNote ? `সেভিংস-এ জমা: ${saveNote}` : "সেভিংস-এ জমা 🏦";
-      newSavings.history.unshift({ id: genId(), date: TODAY(), amount: n, type: 'deposit', note: finalNote });
+      newSavings.history = [{ id: genId(), date: TODAY(), amount: n, type: 'deposit', note: finalNote }, ...(newSavings.history || [])];
       
-      // 🚀 MAIN TX UPDATE
-      newTxs.unshift({ id: genId(), type: 'expense', date: TODAY(), amount: n, category: 'other_ex', walletId: saveWallet, note: finalNote });
+      newTxs = [{ id: genId(), type: 'expense', date: TODAY(), amount: n, category: 'other_ex', walletId: saveWallet, note: finalNote }, ...newTxs];
     } else {
       if (newSavings.balance < n) return showToast("সেভিংস-এ পর্যাপ্ত টাকা নেই!", "error");
       newWallets[wIdx].balance += n;
       newSavings.balance -= n; 
       const finalNote = saveNote ? `সেভিংস থেকে উত্তোলন: ${saveNote}` : "সেভিংস থেকে উত্তোলন 🏦";
-      newSavings.history.unshift({ id: genId(), date: TODAY(), amount: n, type: 'withdraw', note: finalNote });
+      newSavings.history = [{ id: genId(), date: TODAY(), amount: n, type: 'withdraw', note: finalNote }, ...(newSavings.history || [])];
       
-      // 🚀 MAIN TX UPDATE
-      newTxs.unshift({ id: genId(), type: 'income', date: TODAY(), amount: n, category: 'other_in', walletId: saveWallet, note: finalNote });
+      newTxs = [{ id: genId(), type: 'income', date: TODAY(), amount: n, category: 'other_in', walletId: saveWallet, note: finalNote }, ...newTxs];
     }
     
     setData({...data, wallets: newWallets, savings: newSavings, txs: newTxs});
-    setSaveAmount(""); setSaveNote("");
+    setSaveAmount(""); 
+    setSaveNote("");
     showToast(type === 'deposit' ? "সেভিংস জমা হয়েছে" : "সেভিংস থেকে তোলা হয়েছে", "success");
   };
 
@@ -447,7 +495,7 @@ function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }
     const n = Number(addFund.amount);
     if (!n) return showToast("পরিমাণ দিন", "error");
     let newWallets = [...data.wallets];
-    let newSavings = { ...data.savings };
+    let newSavings = { ...(data.savings || { balance: 0, history: [] }) };
     let newTxs = [...data.txs];
     
     const goalName = data.goals.find(g=>g.id===id)?.name || "Goal";
@@ -456,12 +504,12 @@ function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }
     if (addFund.sourceId === "savings") {
         if (newSavings.balance < n) return showToast("সেভিংস-এ টাকা নেই!", "error");
         newSavings.balance -= n;
-        newSavings.history.unshift({ id: genId(), date: TODAY(), amount: n, type: 'withdraw', note: finalNote });
+        newSavings.history = [{ id: genId(), date: TODAY(), amount: n, type: 'withdraw', note: finalNote }, ...(newSavings.history || [])];
     } else if (addFund.sourceId !== "external") {
         const wIdx = newWallets.findIndex(x => x.id === addFund.sourceId);
-        if (newWallets[wIdx].balance < n) return showToast("ওয়ালেটে টাকা নেই!", "error");
+        if (wIdx === -1 || newWallets[wIdx].balance < n) return showToast("ওয়ালেটে টাকা নেই!", "error");
         newWallets[wIdx].balance -= n;
-        newTxs.unshift({ id: genId(), type: 'expense', date: TODAY(), amount: n, category: 'other_ex', walletId: addFund.sourceId, note: finalNote });
+        newTxs = [{ id: genId(), type: 'expense', date: TODAY(), amount: n, category: 'other_ex', walletId: addFund.sourceId, note: finalNote }, ...newTxs];
     }
 
     setData({...data, wallets: newWallets, savings: newSavings, txs: newTxs, goals: data.goals.map(g => g.id === id ? {...g, saved: g.saved + n} : g)});
@@ -472,7 +520,7 @@ function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }
   const handleAddBudgetCat = () => {
     if(!catForm.name) return showToast("নাম দিন", "error");
     const newCat = { id: genId(), label: { bn: catForm.name, en: catForm.name }, icon: catForm.icon, color: catForm.color, bg: `${catForm.color}20`, border: `${catForm.color}50` };
-    setData({...data, customCategories: { ...data.customCategories, expense: [...(data.customCategories.expense||[]), newCat] }});
+    setData({...data, customCategories: { ...data.customCategories, expense: [...(data.customCategories?.expense||[]), newCat] }});
     setCatForm({ show: false, name: "", icon: "📦", color: "#8b5cf6" });
     showToast("ক্যাটাগরি যুক্ত হয়েছে", "success");
   };
@@ -493,7 +541,7 @@ function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }
           <div style={{ padding: 30, borderRadius: 32, background: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))", border: "1px solid rgba(16,185,129,0.3)", textAlign: "center" }}>
             <div style={{ width: 60, height: 60, background: "#10b981", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 15px", boxShadow: "0 10px 20px rgba(16,185,129,0.2)" }}><Landmark size={30} color="#fff" /></div>
             <p style={{ fontWeight: 800, color: "#10b981", fontSize: 12, textTransform: "uppercase" }}>মোট সঞ্চয়</p>
-            <h2 style={{ fontSize: 36, fontWeight: 900, marginTop: 8 }}>{fmt(data.savings.balance)}</h2>
+            <h2 style={{ fontSize: 36, fontWeight: 900, marginTop: 8 }}>{fmt(data.savings?.balance || 0)}</h2>
             
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 25 }}>
               <input type="number" placeholder="টাকার পরিমাণ" value={saveAmount} onChange={e=>setSaveAmount(e.target.value)} style={{ padding: 14, borderRadius: 12, background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.text, fontWeight: 700, outline: "none" }} />
@@ -546,7 +594,7 @@ function PlanningView({ data, setData, fmt, TH, lang, getCategories, showToast }
             </div>
           )}
           
-          {!(activeGoals.length) && !(completedGoals.length) && <p style={{ textAlign: "center", color: TH.textDim, fontSize: 13, marginTop: 20 }}>কোনো গোল সেট করা নেই</p>}
+          {!(activeGoals.length) && !(completedGoals.length) && <p style={{ textAlign: "center", color: TH.textMid, fontSize: 13, marginTop: 20 }}>কোনো গোল সেট করা নেই</p>}
           
           {activeGoals.map(g => (
             <div key={g.id} style={{ padding: 22, background: TH.bgCard, border: `1px solid ${TH.border}`, borderRadius: 24, position: "relative", overflow: "hidden" }}>
