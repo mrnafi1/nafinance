@@ -8,7 +8,7 @@ import {
   Plus, Trash2, Home, BarChart2, Settings, TrendingDown, TrendingUp,
   CreditCard, HandCoins, Target, Users, Sun, Moon, X,
   DollarSign, Download, Printer, Eye, EyeOff, ShieldCheck, Code, Search, 
-  Filter, AlertTriangle, Upload, ChevronLeft, ChevronRight, PiggyBank, 
+  Filter, AlertTriangle, Upload, ChevronLeft, ChevronRight, Landmark, 
   Edit3, Calendar, Wallet, ArrowUpRight, ArrowDownRight, ArrowRightLeft,
   CheckCircle2, Lock, Camera, Mail, Globe, PlusCircle, PenTool, RefreshCw, Bell, KeyRound
 } from "lucide-react";
@@ -65,18 +65,18 @@ const fmtMoney = (n, curr, lang) => {
 export default function App() {
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem("nafinance_db_v7");
+      const saved = localStorage.getItem("nafinance_db_v8");
       if (saved) return JSON.parse(saved);
     } catch(e) {}
     return {
       txs: [], wallets: [{ id: "w1", name: "Cash", balance: 0, icon: "💵" }, { id: "w2", name: "Bank", balance: 0, icon: "🏦" }],
-      debts: [], goals: [], budgets: {}, recurring: [], savings: { balance: 0 }, customCategories: { expense: [], income: [] }
+      debts: [], goals: [], budgets: {}, recurring: [], savings: { balance: 0, history: [] }, customCategories: { expense: [], income: [] }
     };
   });
 
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem("nafinance_set_v7");
+      const saved = localStorage.getItem("nafinance_set_v8");
       if (saved) return JSON.parse(saved);
     } catch(e) {}
     return { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "", recoveryWord: "" };
@@ -89,8 +89,8 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const appRef = useRef(null);
 
-  useEffect(() => { localStorage.setItem("nafinance_db_v7", JSON.stringify(data)); }, [data]);
-  useEffect(() => { localStorage.setItem("nafinance_set_v7", JSON.stringify(settings)); }, [settings]);
+  useEffect(() => { localStorage.setItem("nafinance_db_v8", JSON.stringify(data)); }, [data]);
+  useEffect(() => { localStorage.setItem("nafinance_set_v8", JSON.stringify(settings)); }, [settings]);
 
   // SMART APP LOCK (Background Lock)
   useEffect(() => {
@@ -397,7 +397,7 @@ function SettingsModal({ settings, setSettings, setModal, t, TH, isDark, lang, s
 
   const handleReset = () => {
     if(window.confirm(lang==="bn"?"আপনি কি নিশ্চিত? সব ডেটা মুছে যাবে!":"Are you sure? All data will be deleted!")) {
-      setData({ txs: [], wallets: [{ id: "w1", name: "Cash", balance: 0, icon: "💵" }, { id: "w2", name: "Bank", balance: 0, icon: "🏦" }], debts: [], goals: [], budgets: {}, recurring: [], savings: { balance: 0 }, customCategories: { expense: [], income: [] } });
+      setData({ txs: [], wallets: [{ id: "w1", name: "Cash", balance: 0, icon: "💵" }, { id: "w2", name: "Bank", balance: 0, icon: "🏦" }], debts: [], goals: [], budgets: {}, recurring: [], savings: { balance: 0, history: [] }, customCategories: { expense: [], income: [] } });
       setSettings({...settings, pinLock: "", recoveryWord: ""});
       showToast(lang==="bn"?"অ্যাপ রিসেট হয়েছে":"App Reset Successful", "success");
       setModal(null);
@@ -573,7 +573,6 @@ function HomeView({ data, fmt, t, deleteTx, editTx, settings, toggleHide, isDark
       {/* ALERTS SECTION */}
       {(budgetAlerts.length > 0 || debtAlerts.length > 0) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {/* Budget Alerts */}
           {budgetAlerts.map(cat => {
             const lim   = data.budgets[cat.id];
             const spent = data.txs.filter(x => x.type==="expense" && x.category===cat.id && x.date.startsWith(TODAY().slice(0, 7))).reduce((s,e)=>s+e.amount,0);
@@ -589,7 +588,6 @@ function HomeView({ data, fmt, t, deleteTx, editTx, settings, toggleHide, isDark
               </div>
             );
           })}
-          {/* Debt Alerts */}
           {debtAlerts.map(d => {
             const isLend = d.type === "lend";
             const diff = Math.ceil((new Date(d.returnDate) - new Date(TODAY())) / (1000 * 60 * 60 * 24));
@@ -851,26 +849,35 @@ function AssetsView({ data, setData, fmt, t, isDark, TH, lang, selStyle, showToa
   );
 }
 
-// ── PLANNING VIEW (Piggy Bank Added) ───────────────────────────────────
+// ── PLANNING VIEW (Savings Vault Added) ───────────────────────────────────
 function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCategories, showToast }) {
   const [goalForm, setGoalForm] = useState({ show: false, id: "", name: "", target: "", icon: "🎯" });
   const [addFund, setAddFund] = useState({ id: "", amount: "" });
   const [tab, setPlanTab] = useState("savings"); 
-  const [piggyAmount, setPiggyAmount] = useState("");
-  const [piggyWallet, setPiggyWallet] = useState(data.wallets[0]?.id || "");
+  const [saveAmount, setSaveAmount] = useState("");
+  const [saveWallet, setSaveWallet] = useState(data.wallets[0]?.id || "");
 
-  const handlePiggySave = () => {
-    const n = Number(piggyAmount);
+  const handleSaveDeposit = () => {
+    const n = Number(saveAmount);
     if(!n || n <= 0) return showToast("Invalid amount");
-    const w = data.wallets.find(x => x.id === piggyWallet);
+    const w = data.wallets.find(x => x.id === saveWallet);
     if(w.balance < n) return showToast("Insufficient balance in wallet", "error");
     
-    const ws = data.wallets.map(x => x.id === piggyWallet ? {...x, balance: x.balance - n} : x);
-    const newTx = { id: genId(), type: 'transfer', date: TODAY(), amount: n, walletId: piggyWallet, note: "Transferred to Piggy Bank 🐷" };
+    const ws = data.wallets.map(x => x.id === saveWallet ? {...x, balance: x.balance - n} : x);
+    const newTx = { id: genId(), type: 'transfer', date: TODAY(), amount: n, walletId: saveWallet, note: "Transferred to Savings Vault 🏦" };
+    const newHistory = { id: genId(), date: TODAY(), amount: n };
     
-    setData({...data, wallets: ws, txs: [newTx, ...data.txs], savings: { balance: (data.savings?.balance || 0) + n }});
-    setPiggyAmount("");
-    showToast("Added to Piggy Bank!", "success");
+    setData({
+      ...data, 
+      wallets: ws, 
+      txs: [newTx, ...data.txs], 
+      savings: { 
+        balance: (data.savings?.balance || 0) + n, 
+        history: [newHistory, ...(data.savings?.history || [])] 
+      }
+    });
+    setSaveAmount("");
+    showToast("Added to Savings Vault!", "success");
   };
 
   const saveGoal = () => {
@@ -892,27 +899,65 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
 
   const inp = { padding: 12, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 12, outline: "none", fontWeight: 700, color: TH.text, width: "100%", boxSizing: "border-box" };
 
+  // Group Savings History by Month
+  const groupedSavings = (data.savings?.history || []).reduce((acc, curr) => {
+    const [year, month] = curr.date.split('-');
+    const key = `${MONTH_SHORT[lang==="bn"?"bn":"en"][parseInt(month)-1]} ${year}`;
+    if (!acc[key]) acc[key] = { total: 0, items: [] };
+    acc[key].total += curr.amount;
+    acc[key].items.push(curr);
+    return acc;
+  }, {});
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", gap: 6, background: TH.bgCard, padding: 6, borderRadius: 16, border: `1px solid ${TH.border}` }}>
-         <button onClick={()=>setPlanTab("savings")} style={{ flex: 1, padding: 10, borderRadius: 12, border: "none", background: tab==="savings" ? "rgba(16,185,129,0.1)" : "transparent", color: tab==="savings" ? "#10b981" : TH.textMid, fontWeight: 700, cursor: "pointer", fontSize: 11 }}>🐷 Savings</button>
+         <button onClick={()=>setPlanTab("savings")} style={{ flex: 1, padding: 10, borderRadius: 12, border: "none", background: tab==="savings" ? "rgba(16,185,129,0.1)" : "transparent", color: tab==="savings" ? "#10b981" : TH.textMid, fontWeight: 700, cursor: "pointer", fontSize: 11 }}>🏦 Savings</button>
          <button onClick={()=>setPlanTab("goals")} style={{ flex: 1, padding: 10, borderRadius: 12, border: "none", background: tab==="goals" ? "rgba(139,92,246,0.1)" : "transparent", color: tab==="goals" ? "#8b5cf6" : TH.textMid, fontWeight: 700, cursor: "pointer", fontSize: 11 }}>🎯 Goals</button>
          <button onClick={()=>setPlanTab("budgets")} style={{ flex: 1, padding: 10, borderRadius: 12, border: "none", background: tab==="budgets" ? "rgba(245,158,11,0.1)" : "transparent", color: tab==="budgets" ? "#f59e0b" : TH.textMid, fontWeight: 700, cursor: "pointer", fontSize: 11 }}>📊 Budgets</button>
       </div>
 
       {tab === "savings" && (
-        <div style={{ padding: 24, background: "linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 24, textAlign: "center" }}>
-          <div style={{ width: 60, height: 60, background: "#10b981", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center" }}><PiggyBank size={30} color="#fff"/></div>
-          <p style={{ fontWeight: 700, color: "#10b981", textTransform: "uppercase", fontSize: 12, letterSpacing: 1 }}>Total Saved</p>
-          <h2 style={{ fontSize: 36, fontWeight: 900, marginBottom: 20 }}>{fmt(data.savings?.balance || 0)}</h2>
-          <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
-            <div style={{ display: "flex", gap: 8 }}>
-              <select value={piggyWallet} onChange={e=>setPiggyWallet(e.target.value)} style={{ ...selStyle, ...inp, flex: 1 }}>{data.wallets.map(w => <option key={w.id} value={w.id}>From {w.name}</option>)}</select>
-              <input type="text" inputMode="numeric" placeholder="Amount" value={piggyAmount} onChange={e=>setPiggyAmount(e.target.value.replace(/[^0-9]/g, ''))} style={{ ...inp, flex: 1 }}/>
+        <>
+          <div style={{ padding: 24, background: "linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 24, textAlign: "center" }}>
+            <div style={{ width: 60, height: 60, background: "#10b981", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center" }}><Landmark size={30} color="#fff"/></div>
+            <p style={{ fontWeight: 700, color: "#10b981", textTransform: "uppercase", fontSize: 12, letterSpacing: 1 }}>{lang==="bn"?"মোট জমানো টাকা":"Total Savings Vault"}</p>
+            <h2 style={{ fontSize: 36, fontWeight: 900, marginBottom: 20 }}>{fmt(data.savings?.balance || 0)}</h2>
+            <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select value={saveWallet} onChange={e=>setSaveWallet(e.target.value)} style={{ ...selStyle, ...inp, flex: 1 }}>{data.wallets.map(w => <option key={w.id} value={w.id}>From {w.name}</option>)}</select>
+                <input type="text" inputMode="numeric" placeholder="Amount" value={saveAmount} onChange={e=>setSaveAmount(e.target.value.replace(/[^0-9]/g, ''))} style={{ ...inp, flex: 1 }}/>
+              </div>
+              <button onClick={handleSaveDeposit} style={{ width: "100%", padding: 14, background: "#10b981", color: "#fff", fontWeight: 800, borderRadius: 12, border: "none", cursor: "pointer" }}>+ {lang==="bn"?"সেভিংস-এ যোগ করুন":"Deposit to Savings"}</button>
             </div>
-            <button onClick={handlePiggySave} style={{ width: "100%", padding: 14, background: "#10b981", color: "#fff", fontWeight: 800, borderRadius: 12, border: "none", cursor: "pointer" }}>+ Add to Piggy Bank</button>
           </div>
-        </div>
+
+          <div style={{ marginTop: 10 }}>
+            <h4 style={{ fontWeight: 800, fontSize: 15, marginBottom: 12, color: TH.text }}>{lang==="bn"?"জমানো টাকার হিস্ট্রি":"Savings History"}</h4>
+            {Object.keys(groupedSavings).length === 0 ? (
+               <p style={{ fontSize: 12, color: TH.textDim, textAlign: "center", padding: 10 }}>{lang==="bn"?"এখনো কোনো সেভিংস নেই।":"No savings history yet."}</p>
+            ) : (
+               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {Object.entries(groupedSavings).map(([monthStr, monthData]) => (
+                     <div key={monthStr} style={{ background: TH.bgCard, borderRadius: 16, padding: 16, border: `1px solid ${TH.border}` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${TH.border}`, paddingBottom: 8, marginBottom: 8 }}>
+                           <span style={{ fontWeight: 800, fontSize: 14, color: TH.text }}>{monthStr}</span>
+                           <span style={{ fontWeight: 800, fontSize: 14, color: "#10b981" }}>+{fmt(monthData.total)}</span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                           {monthData.items.map(item => (
+                              <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                                 <span style={{ color: TH.textMid }}>{item.date}</span>
+                                 <span style={{ fontWeight: 700, color: TH.text }}>{fmt(item.amount)}</span>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            )}
+          </div>
+        </>
       )}
 
       {tab === "goals" && (
