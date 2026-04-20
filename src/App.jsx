@@ -10,7 +10,7 @@ import {
   DollarSign, Download, Printer, Eye, EyeOff, ShieldCheck, Code, Search, 
   Filter, AlertTriangle, Upload, ChevronLeft, ChevronRight, PiggyBank, 
   Edit3, Calendar, Wallet, ArrowUpRight, ArrowDownRight, ArrowRightLeft,
-  CheckCircle2, Lock, Camera, Mail, Globe, PlusCircle, PenTool, RefreshCw
+  CheckCircle2, Lock, Camera, Mail, Globe, PlusCircle, PenTool, RefreshCw, Bell
 } from "lucide-react";
 
 // ── CONFIG ─────────────────────────────────────────────────────────────
@@ -61,26 +61,22 @@ const fmtMoney = (n, curr, lang) => {
   return new Intl.NumberFormat(lang === "bn" ? "bn-BD" : c.loc, { style: "currency", currency: c.code, minimumFractionDigits: 0 }).format(n || 0);
 };
 
-// ── THEME ─────────────────────────────────────────────────────────────
-const DARK_THEME  = { bg: "#030712", bgCard: "rgba(15,23,42,0.9)", bgInner: "rgba(30,41,59,0.6)", border: "rgba(99,102,241,0.15)", text: "#e2e8f0", textMid: "#94a3b8", textDim: "#475569" };
-const LIGHT_THEME = { bg: "#f8fafc", bgCard: "#ffffff", bgInner: "#f1f5f9", border: "#e2e8f0", text: "#0f172a", textMid: "#64748b", textDim: "#94a3b8" };
-
 // ── MAIN APP ──────────────────────────────────────────────────────────
 export default function App() {
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem("nafinance_db_v5");
+      const saved = localStorage.getItem("nafinance_db_v6");
       if (saved) return JSON.parse(saved);
     } catch(e) {}
     return {
       txs: [], wallets: [{ id: "w1", name: "Cash", balance: 0, icon: "💵" }, { id: "w2", name: "Bank", balance: 0, icon: "🏦" }],
-      debts: [], goals: [], budgets: {}, recurring: [], savings: { monthlyGoal: 0 }, customCategories: { expense: [], income: [] }
+      debts: [], goals: [], budgets: {}, recurring: [], savings: { balance: 0 }, customCategories: { expense: [], income: [] }
     };
   });
 
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem("nafinance_set_v5");
+      const saved = localStorage.getItem("nafinance_set_v6");
       if (saved) return JSON.parse(saved);
     } catch(e) {}
     return { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "" };
@@ -93,41 +89,16 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const appRef = useRef(null);
 
-  useEffect(() => { localStorage.setItem("nafinance_db_v5", JSON.stringify(data)); }, [data]);
-  useEffect(() => { localStorage.setItem("nafinance_set_v5", JSON.stringify(settings)); }, [settings]);
-
-  useEffect(() => {
-    if(!isAuthenticated) return;
-    const today = new Date();
-    const curMonth = `${today.getFullYear()}-${today.getMonth()}`;
-    const day = today.getDate();
-    let updated = false;
-
-    setData(prev => {
-      let newData = { ...prev };
-      newData.recurring = newData.recurring.map(rec => {
-        if (day >= rec.day && rec.lastApplied !== curMonth) {
-          const w = newData.wallets.find(wa => wa.id === rec.walletId);
-          if (w && w.balance >= rec.amount) {
-            const tx = { id: genId(), type: "expense", date: TODAY(), amount: rec.amount, category: rec.category, walletId: rec.walletId, note: `[Auto] ${rec.name}` };
-            newData.txs = [tx, ...newData.txs];
-            newData.wallets = newData.wallets.map(wa => wa.id === rec.walletId ? { ...wa, balance: wa.balance - rec.amount } : wa);
-            updated = true;
-            return { ...rec, lastApplied: curMonth };
-          }
-        }
-        return rec;
-      });
-      return updated ? newData : prev;
-    });
-    if(updated) showToast(settings.lang === "bn" ? "অটো-রিকারিং বিল পরিশোধ হয়েছে!" : "Auto-recurring bills applied!", "success");
-  }, [isAuthenticated, settings.lang]);
+  useEffect(() => { localStorage.setItem("nafinance_db_v6", JSON.stringify(data)); }, [data]);
+  useEffect(() => { localStorage.setItem("nafinance_set_v6", JSON.stringify(settings)); }, [settings]);
 
   const isDark = settings.theme === "dark";
-  const TH     = isDark ? DARK_THEME : LIGHT_THEME;
-  const t      = key => DICT[key]?.[settings.lang] || key;
-  const lang   = settings.lang;
-  const fmt    = n   => settings.hideBalance ? "••••" : fmtMoney(n, settings.curr, lang);
+  const TH = isDark 
+    ? { bg: "#030712", bgCard: "rgba(15,23,42,0.9)", bgInner: "rgba(30,41,59,0.6)", border: "rgba(99,102,241,0.15)", text: "#e2e8f0", textMid: "#94a3b8", textDim: "#475569" }
+    : { bg: "#f8fafc", bgCard: "#ffffff", bgInner: "#f1f5f9", border: "#e2e8f0", text: "#0f172a", textMid: "#64748b", textDim: "#94a3b8" };
+  const t = key => DICT[key]?.[settings.lang] || key;
+  const lang = settings.lang;
+  const fmt = n => settings.hideBalance ? "••••" : fmtMoney(n, settings.curr, lang);
 
   const showToast = (msg, type="error") => {
     setToast({ msg, type });
@@ -198,6 +169,7 @@ export default function App() {
   const todayStr = lang === "bn" ? `${DAY_NAMES.bn[nowDate.getDay()]}, ${nowDate.getDate()} ${MONTH_SHORT.bn[nowDate.getMonth()]} ${nowDate.getFullYear()}` : `${DAY_NAMES.en[nowDate.getDay()]}, ${nowDate.getDate()} ${MONTH_SHORT.en[nowDate.getMonth()]} ${nowDate.getFullYear()}`;
   const selStyle = { backgroundColor: TH.bgInner, color: TH.text, border: `1px solid ${TH.border}` };
 
+  // ALERTS CALCULATION
   const thisMonth = TODAY().slice(0, 7);
   const budgetAlerts = getCategories("expense").filter(cat => {
     const lim = data.budgets[cat.id];
@@ -206,19 +178,19 @@ export default function App() {
     return spent >= lim * 0.8;
   });
 
+  const debtAlerts = (data.debts || []).filter(d => {
+    if (!d.returnDate) return false;
+    const diffDays = Math.ceil((new Date(d.returnDate) - new Date(TODAY())) / (1000 * 60 * 60 * 24));
+    return diffDays <= 3 && diffDays >= -30; // Upcoming in 3 days or overdue
+  });
+
   return (
     <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, fontFamily: "'Hind Siliguri', sans-serif", transition: "background-color 0.5s ease, color 0.5s ease" }}>
       
       {/* CSS: Removes arrows from number inputs */}
       <style>{`
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type="number"] {
-            -moz-appearance: textfield;
-        }
+        input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
       `}</style>
       
       <ToastUI />
@@ -233,9 +205,9 @@ export default function App() {
                 <Calendar size={9} color={TH.textMid}/><span style={{ fontSize: 10, color: TH.textMid, fontWeight: 600 }}>{todayStr}</span>
               </div>
             </div>
-            {budgetAlerts.length > 0 && (
+            {(budgetAlerts.length > 0 || debtAlerts.length > 0) && (
               <span style={{ fontSize: 9, background: "#ef4444", color: "#fff", padding: "2px 7px", borderRadius: 99, fontWeight: 700, animation: "pulse 2s infinite", marginLeft: 4 }}>
-                {budgetAlerts.length} ⚠
+                {budgetAlerts.length + debtAlerts.length} ⚠
               </span>
             )}
           </div>
@@ -244,9 +216,9 @@ export default function App() {
       </header>
 
       <main style={{ maxWidth: 480, margin: "0 auto", padding: "20px 16px 140px" }}>
-        {tab === "home"     && <HomeView data={data} fmt={fmt} t={t} deleteTx={deleteTx} editTx={(tx)=>{setEditTxData(tx);setModal("tx");}} settings={settings} toggleHide={() => setSettings({...settings, hideBalance: !settings.hideBalance})} isDark={isDark} TH={TH} lang={lang} getCategories={getCategories} exportPNG={exportPNG} budgetAlerts={budgetAlerts}/>}
+        {tab === "home"     && <HomeView data={data} fmt={fmt} t={t} deleteTx={deleteTx} editTx={(tx)=>{setEditTxData(tx);setModal("tx");}} settings={settings} toggleHide={() => setSettings({...settings, hideBalance: !settings.hideBalance})} isDark={isDark} TH={TH} lang={lang} getCategories={getCategories} exportPNG={exportPNG} budgetAlerts={budgetAlerts} debtAlerts={debtAlerts}/>}
         {tab === "assets"   && <AssetsView data={data} setData={setData} fmt={fmt} t={t} isDark={isDark} TH={TH} lang={lang} selStyle={selStyle} showToast={showToast}/>}
-        {tab === "planning" && <PlanningView data={data} setData={setData} fmt={fmt} t={t} lang={lang} isDark={isDark} TH={TH} selStyle={selStyle} getCategories={getCategories}/>}
+        {tab === "planning" && <PlanningView data={data} setData={setData} fmt={fmt} t={t} lang={lang} isDark={isDark} TH={TH} selStyle={selStyle} getCategories={getCategories} showToast={showToast}/>}
         {tab === "graphs"   && <GraphsView data={data} fmt={fmt} t={t} lang={lang} isDark={isDark} TH={TH} getCategories={getCategories}/>}
       </main>
 
@@ -261,8 +233,7 @@ export default function App() {
       </nav>
 
       {modal === "tx" && <TxModal data={data} saveTx={saveTx} onClose={() => setModal(null)} t={t} lang={lang} isDark={isDark} TH={TH} selStyle={selStyle} showToast={showToast} editData={editTxData} getCategories={getCategories}/>}
-      
-      {modal === "settings" && <SettingsModal settings={settings} setSettings={setSettings} setModal={setModal} t={t} TH={TH} isDark={isDark} lang={lang} selStyle={selStyle} data={data} setData={setData} showToast={showToast} fileRef={appRef}/>}
+      {modal === "settings" && <SettingsModal settings={settings} setSettings={setSettings} setModal={setModal} t={t} TH={TH} isDark={isDark} lang={lang} selStyle={selStyle} data={data} setData={setData} showToast={showToast}/>}
     </div>
   );
 }
@@ -302,7 +273,7 @@ function PinScreen({ correctPin, onSuccess, TH, lang }) {
 }
 
 // ── SETTINGS MODAL ────────────────────────────────────────────────────
-function SettingsModal({ settings, setSettings, setModal, t, TH, isDark, lang, selStyle, data, setData, showToast, fileRef }) {
+function SettingsModal({ settings, setSettings, setModal, t, TH, isDark, lang, selStyle, data, setData, showToast }) {
   const [pinMode, setPinMode] = useState(false);
   const [newPin, setNewPin] = useState("");
   const [catMode, setCatMode] = useState(false);
@@ -353,7 +324,7 @@ function SettingsModal({ settings, setSettings, setModal, t, TH, isDark, lang, s
 
   const handleReset = () => {
     if(window.confirm(lang==="bn"?"আপনি কি নিশ্চিত? সব ডেটা মুছে যাবে!":"Are you sure? All data will be deleted!")) {
-      setData({ txs: [], wallets: [{ id: "w1", name: "Cash", balance: 0, icon: "💵" }, { id: "w2", name: "Bank", balance: 0, icon: "🏦" }], debts: [], goals: [], budgets: {}, recurring: [], savings: { monthlyGoal: 0 }, customCategories: { expense: [], income: [] } });
+      setData({ txs: [], wallets: [{ id: "w1", name: "Cash", balance: 0, icon: "💵" }, { id: "w2", name: "Bank", balance: 0, icon: "🏦" }], debts: [], goals: [], budgets: {}, recurring: [], savings: { balance: 0 }, customCategories: { expense: [], income: [] } });
       showToast(lang==="bn"?"অ্যাপ রিসেট হয়েছে":"App Reset Successful", "success");
       setModal(null);
     }
@@ -387,8 +358,8 @@ function SettingsModal({ settings, setSettings, setModal, t, TH, isDark, lang, s
 
         {pinMode ? (
           <div style={{ padding: 16, background: TH.bgInner, borderRadius: 16, marginBottom: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>{lang==="bn"?"৪ সংখ্যার পিন দিন (ফাঁকা রাখলে অফ হবে)":"Enter 4-digit PIN (leave empty to disable)"}</p>
-            <input type="number" placeholder="****" value={newPin} onChange={e=>setNewPin(e.target.value.slice(0,4))} style={{ width: "100%", padding: 12, borderRadius: 12, border: `1px solid ${TH.border}`, background: TH.bg, color: TH.text, textAlign: "center", fontSize: 20, letterSpacing: 4, marginBottom: 10, boxSizing: "border-box", outline: "none" }}/>
+            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>{lang==="bn"?"৪ সংখ্যার পিন দিন":"Enter 4-digit PIN"}</p>
+            <input type="text" inputMode="numeric" placeholder="****" value={newPin} onChange={e=>setNewPin(e.target.value.replace(/[^0-9]/g, '').slice(0,4))} style={{ width: "100%", padding: 12, borderRadius: 12, border: `1px solid ${TH.border}`, background: TH.bg, color: TH.text, textAlign: "center", fontSize: 20, letterSpacing: 4, marginBottom: 10, boxSizing: "border-box", outline: "none" }}/>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={savePin} style={{ flex: 1, padding: 10, background: "#8b5cf6", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700 }}>Save</button>
               <button onClick={()=>setPinMode(false)} style={{ flex: 1, padding: 10, background: "transparent", color: TH.textMid, border: `1px solid ${TH.border}`, borderRadius: 10 }}>Cancel</button>
@@ -433,13 +404,10 @@ function TxModal({ data, saveTx, onClose, t, lang, isDark, TH, selStyle, showToa
   const [type, setType] = useState(editData ? editData.type : "expense");
   const [f, setF] = useState(editData ? editData : { date: TODAY(), category: "food", amount: "", note: "", walletId: data.wallets[0]?.id || "" });
   const cats = type === "transfer" ? [] : getCategories(type);
-  const amountRef = useRef(null); // MAGIC REF FOR AUTOFOCUS
+  const amountRef = useRef(null);
 
-  // MAGIC AUTOFOCUS EFFECT
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if(amountRef.current) amountRef.current.focus();
-    }, 100);
+    const timer = setTimeout(() => amountRef.current?.focus(), 100);
     return () => clearTimeout(timer);
   }, []);
 
@@ -480,7 +448,6 @@ function TxModal({ data, saveTx, onClose, t, lang, isDark, TH, selStyle, showToa
           </div>
         )}
 
-        {/* RE-ADDED type="number" FOR SAFETY, ADDED ref FOR AUTOFOCUS */}
         <input ref={amountRef} type="number" placeholder="0" value={f.amount} onChange={e => setF({...f, amount: e.target.value})} style={{ width: "100%", padding: 18, background: TH.bgInner, border: `2px solid ${f.amount ? "#8b5cf6" : TH.border}`, borderRadius: 20, fontSize: 36, fontWeight: 800, color: "#8b5cf6", textAlign: "center", outline: "none", marginBottom: 12, boxSizing: "border-box" }}/>
         <input type="text" placeholder={lang==="bn"?"নোট (ঐচ্ছিক)":"Note (optional)"} value={f.note} onChange={e => setF({...f, note: e.target.value})} style={{ width: "100%", padding: 14, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 16, fontSize: 14, color: TH.text, outline: "none", marginBottom: 14, boxSizing: "border-box" }}/>
 
@@ -491,8 +458,8 @@ function TxModal({ data, saveTx, onClose, t, lang, isDark, TH, selStyle, showToa
   );
 }
 
-// ── HOME VIEW ────────────────────────────────────────────────────────────
-function HomeView({ data, fmt, t, deleteTx, editTx, settings, toggleHide, isDark, TH, lang, getCategories, exportPNG, budgetAlerts }) {
+// ── HOME VIEW (Debts Alert Added) ──────────────────────────────────────
+function HomeView({ data, fmt, t, deleteTx, editTx, settings, toggleHide, isDark, TH, lang, getCategories, exportPNG, budgetAlerts, debtAlerts }) {
   const { hideBalance } = settings;
   const [search, setSearch] = useState("");
   
@@ -525,8 +492,10 @@ function HomeView({ data, fmt, t, deleteTx, editTx, settings, toggleHide, isDark
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       
-      {budgetAlerts && budgetAlerts.length > 0 && (
+      {/* ALERTS SECTION */}
+      {(budgetAlerts.length > 0 || debtAlerts.length > 0) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {/* Budget Alerts */}
           {budgetAlerts.map(cat => {
             const lim   = data.budgets[cat.id];
             const spent = data.txs.filter(x => x.type==="expense" && x.category===cat.id && x.date.startsWith(TODAY().slice(0, 7))).reduce((s,e)=>s+e.amount,0);
@@ -538,6 +507,21 @@ function HomeView({ data, fmt, t, deleteTx, editTx, settings, toggleHide, isDark
                 <div>
                   <p style={{ fontSize: 12, fontWeight: 700, color: TH.text }}>{cat.icon} {cat.label[lang]} ({pct}%)</p>
                   <p style={{ fontSize: 10, color: TH.textMid }}>{fmt(spent)} / {fmt(lim)}</p>
+                </div>
+              </div>
+            );
+          })}
+          {/* Debt Alerts */}
+          {debtAlerts.map(d => {
+            const isLend = d.type === "lend";
+            const diff = Math.ceil((new Date(d.returnDate) - new Date(TODAY())) / (1000 * 60 * 60 * 24));
+            const isLate = diff < 0;
+            return (
+              <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 16, background: "rgba(236,72,153,0.1)", border: "1px solid rgba(236,72,153,0.3)" }}>
+                <Bell size={16} color="#ec4899" className={isLate ? "" : "animate-bounce"}/>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: TH.text }}>{isLend ? `Collect from ${d.person}` : `Pay to ${d.person}`} ({fmt(d.amount)})</p>
+                  <p style={{ fontSize: 10, color: "#ec4899", fontWeight: 700 }}>{isLate ? `Overdue by ${Math.abs(diff)} days!` : `Due in ${diff} days!`}</p>
                 </div>
               </div>
             );
@@ -732,7 +716,6 @@ function AssetsView({ data, setData, fmt, t, isDark, TH, lang, selStyle, showToa
         </div>
       </div>
 
-      {/* Debts Section */}
       <div style={{ background: TH.bgCard, borderRadius: 24, padding: 20, border: `1px solid ${TH.border}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h3 style={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}><HandCoins size={18} color="#f59e0b"/> {lang==="bn"?"ধার-দেনা":"Debts"}</h3>
@@ -790,11 +773,28 @@ function AssetsView({ data, setData, fmt, t, isDark, TH, lang, selStyle, showToa
   );
 }
 
-// ── PLANNING VIEW ──────────────────────────────────────────────────────
-function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCategories }) {
+// ── PLANNING VIEW (Piggy Bank Added) ───────────────────────────────────
+function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCategories, showToast }) {
   const [goalForm, setGoalForm] = useState({ show: false, id: "", name: "", target: "", icon: "🎯" });
   const [addFund, setAddFund] = useState({ id: "", amount: "" });
-  const [tab, setPlanTab] = useState("goals");
+  const [tab, setPlanTab] = useState("savings"); // "savings", "goals", "budgets"
+  const [piggyAmount, setPiggyAmount] = useState("");
+  const [piggyWallet, setPiggyWallet] = useState(data.wallets[0]?.id || "");
+
+  const handlePiggySave = () => {
+    const n = Number(piggyAmount);
+    if(!n || n <= 0) return showToast("Invalid amount");
+    const w = data.wallets.find(x => x.id === piggyWallet);
+    if(w.balance < n) return showToast("Insufficient balance in wallet", "error");
+    
+    // Deduct from wallet & Add to savings
+    const ws = data.wallets.map(x => x.id === piggyWallet ? {...x, balance: x.balance - n} : x);
+    const newTx = { id: genId(), type: 'transfer', date: TODAY(), amount: n, walletId: piggyWallet, note: "Transferred to Piggy Bank 🐷" };
+    
+    setData({...data, wallets: ws, txs: [newTx, ...data.txs], savings: { balance: (data.savings?.balance || 0) + n }});
+    setPiggyAmount("");
+    showToast("Added to Piggy Bank!", "success");
+  };
 
   const saveGoal = () => {
     if(!goalForm.name || !goalForm.target) return;
@@ -817,19 +817,34 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      
-      <div style={{ display: "flex", gap: 8, background: TH.bgCard, padding: 6, borderRadius: 16, border: `1px solid ${TH.border}` }}>
-         <button onClick={()=>setPlanTab("goals")} style={{ flex: 1, padding: 10, borderRadius: 12, border: "none", background: tab==="goals" ? "rgba(139,92,246,0.1)" : "transparent", color: tab==="goals" ? "#8b5cf6" : TH.textMid, fontWeight: 700, cursor: "pointer" }}>🎯 Goals</button>
-         <button onClick={()=>setPlanTab("budgets")} style={{ flex: 1, padding: 10, borderRadius: 12, border: "none", background: tab==="budgets" ? "rgba(245,158,11,0.1)" : "transparent", color: tab==="budgets" ? "#f59e0b" : TH.textMid, fontWeight: 700, cursor: "pointer" }}>📊 Monthly Budget</button>
+      <div style={{ display: "flex", gap: 6, background: TH.bgCard, padding: 6, borderRadius: 16, border: `1px solid ${TH.border}` }}>
+         <button onClick={()=>setPlanTab("savings")} style={{ flex: 1, padding: 10, borderRadius: 12, border: "none", background: tab==="savings" ? "rgba(16,185,129,0.1)" : "transparent", color: tab==="savings" ? "#10b981" : TH.textMid, fontWeight: 700, cursor: "pointer", fontSize: 11 }}>🐷 Savings</button>
+         <button onClick={()=>setPlanTab("goals")} style={{ flex: 1, padding: 10, borderRadius: 12, border: "none", background: tab==="goals" ? "rgba(139,92,246,0.1)" : "transparent", color: tab==="goals" ? "#8b5cf6" : TH.textMid, fontWeight: 700, cursor: "pointer", fontSize: 11 }}>🎯 Goals</button>
+         <button onClick={()=>setPlanTab("budgets")} style={{ flex: 1, padding: 10, borderRadius: 12, border: "none", background: tab==="budgets" ? "rgba(245,158,11,0.1)" : "transparent", color: tab==="budgets" ? "#f59e0b" : TH.textMid, fontWeight: 700, cursor: "pointer", fontSize: 11 }}>📊 Budgets</button>
       </div>
 
-      {tab === "goals" ? (
+      {tab === "savings" && (
+        <div style={{ padding: 24, background: "linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 24, textAlign: "center" }}>
+          <div style={{ width: 60, height: 60, background: "#10b981", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center" }}><PiggyBank size={30} color="#fff"/></div>
+          <p style={{ fontWeight: 700, color: "#10b981", textTransform: "uppercase", fontSize: 12, letterSpacing: 1 }}>Total Saved</p>
+          <h2 style={{ fontSize: 36, fontWeight: 900, marginBottom: 20 }}>{fmt(data.savings?.balance || 0)}</h2>
+          <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <select value={piggyWallet} onChange={e=>setPiggyWallet(e.target.value)} style={{ ...selStyle, ...inp, flex: 1 }}>{data.wallets.map(w => <option key={w.id} value={w.id}>From {w.name}</option>)}</select>
+              <input type="number" placeholder="Amount" value={piggyAmount} onChange={e=>setPiggyAmount(e.target.value)} style={{ ...inp, flex: 1 }}/>
+            </div>
+            <button onClick={handlePiggySave} style={{ width: "100%", padding: 14, background: "#10b981", color: "#fff", fontWeight: 800, borderRadius: 12, border: "none", cursor: "pointer" }}>+ Add to Piggy Bank</button>
+          </div>
+        </div>
+      )}
+
+      {tab === "goals" && (
         <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3 style={{ fontWeight: 800, color: "#8b5cf6" }}>🏆 My Goals</h3>
             <button onClick={()=>setGoalForm({...goalForm, show: true})} style={{ padding: "8px 14px", background: "rgba(139,92,246,0.1)", color: "#8b5cf6", borderRadius: 12, border: "1px solid rgba(139,92,246,0.2)", fontWeight: 700, fontSize: 12 }}>+ New Goal</button>
           </div>
-
+          {/* Goal Forms and Map Logic Unchanged */}
           {goalForm.show && (
             <div style={{ padding: 18, background: TH.bgCard, borderRadius: 20, border: `1px solid ${TH.border}` }}>
               <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
@@ -843,7 +858,6 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
               </div>
             </div>
           )}
-
           {(data.goals || []).map(g => {
             const pct = Math.min((g.saved / g.target) * 100, 100);
             return (
@@ -869,11 +883,12 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
               </div>
             )
           })}
-          {(data.goals || []).length === 0 && !goalForm.show && <p style={{ textAlign: "center", color: TH.textDim, padding: 30 }}>No goals set yet. Start tracking your dreams!</p>}
         </>
-      ) : (
+      )}
+
+      {tab === "budgets" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <p style={{ fontSize: 12, color: TH.textMid, padding: "0 4px", textAlign: "center", marginBottom: 10 }}>{lang==="bn" ? "প্রতি ক্যাটাগরিতে মাসিক সীমা নির্ধারণ করুন। ৮০% ছুঁলে হোম পেজে সতর্কতা দেখাবে।" : "Set limits. You'll be alerted on Home at 80%."}</p>
+          <p style={{ fontSize: 12, color: TH.textMid, padding: "0 4px", textAlign: "center", marginBottom: 10 }}>{lang==="bn" ? "প্রতি ক্যাটাগরিতে মাসিক সীমা নির্ধারণ করুন।" : "Set limits. You'll be alerted on Home at 80%."}</p>
           {getCategories("expense").map(cat => {
             const lim   = data.budgets[cat.id] || 0;
             const spent = data.txs.filter(x => x.type==="expense" && x.category===cat.id && x.date.startsWith(TODAY().slice(0,7))).reduce((s,e)=>s+e.amount,0);
@@ -887,7 +902,7 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
                   <span style={{ fontWeight: 700, fontSize: 14, color: cat.color }}>{cat.icon} {cat.label[lang] || cat.label.en}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: over ? "#f87171" : warn ? "#fbbf24" : TH.textMid }}>
                     {fmt(spent)}{lim ? ` / ${fmt(lim)}` : ""}
-                    {over && " ⚠ Over!"}{warn && " ⚠ Near!"}
+                    {over && " ⚠"}{warn && " ⚠"}
                   </span>
                 </div>
                 {lim > 0 && (
@@ -907,28 +922,105 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
   );
 }
 
-// ── GRAPHS VIEW ────────────────────────────────────────────────────────
+// ── GRAPHS VIEW (Income vs Expense Bar Chart Added) ────────────────────
 function GraphsView({ data, fmt, t, lang, isDark, TH, getCategories }) {
+  const [gTab, setGTab] = useState("pie"); // 'pie', 'week', 'month'
+
+  // Processing Pie Chart (Expenses)
   const catData = getCategories("expense").map(cat => ({
     name: cat.label[lang] || cat.label.en, value: data.txs.filter(x=>x.type==="expense" && x.category===cat.id).reduce((s,e)=>s+e.amount,0), color: cat.color
   })).filter(x=>x.value>0);
 
+  // Processing Weekly Chart (Last 7 Days)
+  const weeklyData = useMemo(() => {
+    return Array.from({length: 7}).map((_, i) => {
+      const d = new Date(); d.setDate(d.getDate() - (6 - i));
+      const dateStr = d.toISOString().split('T')[0];
+      const txs = data.txs.filter(tx => tx.date === dateStr);
+      return { 
+        name: DAY_NAMES[lang][d.getDay()].substring(0,3), 
+        income: txs.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0), 
+        expense: txs.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0) 
+      };
+    });
+  }, [data.txs, lang]);
+
+  // Processing Monthly Chart (Current Year)
+  const monthlyData = useMemo(() => {
+    return MONTH_SHORT.en.map((_, i) => {
+      const prefix = `${new Date().getFullYear()}-${String(i+1).padStart(2, '0')}`;
+      const txs = data.txs.filter(tx => tx.date.startsWith(prefix));
+      return { 
+        name: MONTH_SHORT[lang][i], 
+        income: txs.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0), 
+        expense: txs.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0) 
+      };
+    });
+  }, [data.txs, lang]);
+
+  const customTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{ background: TH.bgCard, border: `1px solid ${TH.border}`, padding: 12, borderRadius: 12 }}>
+          <p style={{ fontWeight: 800, marginBottom: 8 }}>{label}</p>
+          {payload.map((p, i) => <p key={i} style={{ color: p.fill, fontSize: 12, fontWeight: 700 }}>{p.name === 'income' ? (lang==="bn"?"আয়: ":"Income: ") : (lang==="bn"?"ব্যয়: ":"Expense: ")} {fmt(p.value)}</p>)}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div style={{ background: TH.bgCard, borderRadius: 28, padding: 24, border: `1px solid ${TH.border}` }}>
-      <h4 style={{ fontWeight: 800, marginBottom: 16 }}>{lang==="bn"?"খরচের বিভাজন":"Expense Breakdown"}</h4>
-      <div style={{ height: 250 }}>
-        {catData.length === 0 ? <p style={{ textAlign: "center", paddingTop: 80, color: TH.textDim }}>No Data</p> :
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart><Pie data={catData} innerRadius={70} outerRadius={100} paddingAngle={6} dataKey="value" stroke="none">{catData.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip formatter={v=>fmt(v)} contentStyle={{ borderRadius: 12, background: TH.bgCard, border: `1px solid ${TH.border}`, color: TH.text }}/></PieChart>
-          </ResponsiveContainer>
-        }
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      
+      <div style={{ display: "flex", gap: 6, background: TH.bgCard, padding: 6, borderRadius: 16, border: `1px solid ${TH.border}` }}>
+         <button onClick={()=>setGTab("pie")} style={{ flex: 1, padding: 8, borderRadius: 12, border: "none", background: gTab==="pie" ? "rgba(139,92,246,0.1)" : "transparent", color: gTab==="pie" ? "#8b5cf6" : TH.textMid, fontWeight: 700, fontSize: 11 }}>Breakdown</button>
+         <button onClick={()=>setGTab("week")} style={{ flex: 1, padding: 8, borderRadius: 12, border: "none", background: gTab==="week" ? "rgba(59,130,246,0.1)" : "transparent", color: gTab==="week" ? "#3b82f6" : TH.textMid, fontWeight: 700, fontSize: 11 }}>Weekly</button>
+         <button onClick={()=>setGTab("month")} style={{ flex: 1, padding: 8, borderRadius: 12, border: "none", background: gTab==="month" ? "rgba(16,185,129,0.1)" : "transparent", color: gTab==="month" ? "#10b981" : TH.textMid, fontWeight: 700, fontSize: 11 }}>Monthly</button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 20 }}>
-        {catData.map(c => (
-           <div key={c.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, background: TH.bgInner, padding: 8, borderRadius: 10 }}>
-             <div style={{ width: 10, height: 10, borderRadius: "50%", background: c.color }}/> {c.name}
-           </div>
-        ))}
+
+      <div style={{ background: TH.bgCard, borderRadius: 28, padding: 24, border: `1px solid ${TH.border}` }}>
+        {gTab === "pie" && (
+          <>
+            <h4 style={{ fontWeight: 800, marginBottom: 16 }}>{lang==="bn"?"খরচের বিভাজন":"Expense Breakdown"}</h4>
+            <div style={{ height: 250 }}>
+              {catData.length === 0 ? <p style={{ textAlign: "center", paddingTop: 80, color: TH.textDim }}>No Data</p> :
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart><Pie data={catData} innerRadius={70} outerRadius={100} paddingAngle={6} dataKey="value" stroke="none">{catData.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip formatter={v=>fmt(v)} contentStyle={{ borderRadius: 12, background: TH.bgCard, border: `1px solid ${TH.border}`, color: TH.text }}/></PieChart>
+                </ResponsiveContainer>
+              }
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 20 }}>
+              {catData.map(c => (
+                 <div key={c.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, background: TH.bgInner, padding: 8, borderRadius: 10 }}>
+                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: c.color }}/> {c.name}
+                 </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {(gTab === "week" || gTab === "month") && (
+          <>
+            <h4 style={{ fontWeight: 800, marginBottom: 16 }}>{lang==="bn"?"আয় বনাম ব্যয়":"Income vs Expense"}</h4>
+            <div style={{ height: 280 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={gTab === "week" ? weeklyData : monthlyData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={TH.border} vertical={false}/>
+                  <XAxis dataKey="name" tick={{ fill: TH.textMid, fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: TH.textMid, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v)=> v>1000 ? `${v/1000}k` : v} />
+                  <Tooltip content={<customTooltip/>} cursor={{ fill: TH.bgInner }}/>
+                  <Bar dataKey="income" fill="#10b981" radius={[4,4,0,0]} barSize={12} />
+                  <Bar dataKey="expense" fill="#ef4444" radius={[4,4,0,0]} barSize={12} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: TH.textMid }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#10b981" }}/> {lang==="bn"?"আয়":"Income"}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: TH.textMid }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#ef4444" }}/> {lang==="bn"?"ব্যয়":"Expense"}</div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
