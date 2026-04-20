@@ -89,7 +89,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const appRef = useRef(null);
 
-  // ── PWA INSTALL STATE ──
+  // ── PWA INSTALL STATE (UPDATED FOR 100% VISIBILITY) ──
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstall, setShowInstall] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -97,7 +97,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem("nafinance_db_v8", JSON.stringify(data)); }, [data]);
   useEffect(() => { localStorage.setItem("nafinance_set_v8", JSON.stringify(settings)); }, [settings]);
 
-  // SMART APP LOCK (Background Lock)
+  // SMART APP LOCK
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "hidden" && settings.pinLock) {
@@ -108,23 +108,27 @@ export default function App() {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [settings.pinLock]);
 
-  // INSTALL PROMPT LOGIC
+  // INSTALL PROMPT LOGIC (FOOLPROOF)
   useEffect(() => {
     // Check if already installed
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     if (isStandalone) return; 
 
-    // Check iOS
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(userAgent)) {
-      setIsIOS(true);
+    // Detect Mobile Devices
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isApple = /iphone|ipad|ipod/.test(ua);
+    const isMobile = /android|iphone|ipad|ipod/.test(ua);
+    
+    setIsIOS(isApple);
+    
+    // Always show banner on mobile if not installed
+    if (isMobile) {
       setShowInstall(true);
     }
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowInstall(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -137,6 +141,11 @@ export default function App() {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') setShowInstall(false);
       setDeferredPrompt(null);
+    } else {
+      // Fallback instruction if browser blocks the direct prompt
+      alert(settings.lang === "bn" 
+        ? "ডাউনলোড করতে ব্রাউজারের মেনু (⋮) থেকে 'Install App' বা 'Add to Home screen' এ ক্লিক করুন!" 
+        : "Tap the browser menu (⋮) and select 'Install App' or 'Add to Home screen'.");
     }
   };
 
@@ -289,9 +298,9 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🚀 INSTALL BANNER UI */}
+      {/* 🚀 FOOLPROOF INSTALL BANNER UI */}
       {showInstall && (
-        <div style={{ maxWidth: 450, margin: "16px auto 0", background: "linear-gradient(135deg, #10b981, #059669)", borderRadius: 16, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#fff", boxShadow: "0 10px 25px rgba(16,185,129,0.3)" }}>
+        <div style={{ maxWidth: 450, margin: "16px auto 0", background: "linear-gradient(135deg, #10b981, #059669)", borderRadius: 16, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#fff", boxShadow: "0 10px 25px rgba(16,185,129,0.3)", width: "92%" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ background: "rgba(255,255,255,0.2)", padding: 8, borderRadius: 12 }}><Download size={18} color="#fff"/></div>
             <div>
@@ -903,7 +912,7 @@ function AssetsView({ data, setData, fmt, t, isDark, TH, lang, selStyle, showToa
   );
 }
 
-// ── PLANNING VIEW (Savings Vault Added) ───────────────────────────────────
+// ── PLANNING VIEW ──────────────────────────────────────────────────────
 function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCategories, showToast }) {
   const [goalForm, setGoalForm] = useState({ show: false, id: "", name: "", target: "", icon: "🎯" });
   const [addFund, setAddFund] = useState({ id: "", amount: "" });
@@ -953,7 +962,6 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
 
   const inp = { padding: 12, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 12, outline: "none", fontWeight: 700, color: TH.text, width: "100%", boxSizing: "border-box" };
 
-  // Group Savings History by Month
   const groupedSavings = (data.savings?.history || []).reduce((acc, curr) => {
     const [year, month] = curr.date.split('-');
     const key = `${MONTH_SHORT[lang==="bn"?"bn":"en"][parseInt(month)-1]} ${year}`;
@@ -1097,7 +1105,7 @@ function PlanningView({ data, setData, fmt, t, lang, isDark, TH, selStyle, getCa
   );
 }
 
-// ── GRAPHS VIEW (Income vs Expense Bar Chart) ──────────────────────────
+// ── GRAPHS VIEW ──────────────────────────
 function GraphsView({ data, fmt, t, lang, isDark, TH, getCategories }) {
   const [gTab, setGTab] = useState("pie"); 
 
