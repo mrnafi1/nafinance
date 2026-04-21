@@ -1,9 +1,30 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { BarChart, Bar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, Legend } from "recharts";
-import { Plus, Trash2, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail } from "lucide-react";
+import { Plus, Trash2, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut } from "lucide-react";
+
+// 🔥 Firebase Imports
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
 const AUTHOR = "Mushfiqur Rahman Nafi";
 const APP_NAME = "NaFinance";
+
+// 🚀 Firebase Configuration (Your specific credentials)
+const firebaseConfig = {
+  apiKey: "AIzaSyDlW5Dbs5NTeNtJpsdIYPv5bgva0O2q6jg",
+  authDomain: "nafinance-7e236.firebaseapp.com",
+  projectId: "nafinance-7e236",
+  storageBucket: "nafinance-7e236.firebasestorage.app",
+  messagingSenderId: "153707489931",
+  appId: "1:153707489931:web:0a8fcf471235a77936828e"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 
 // 🚀 Premium Navy & Gold UI Animations
 const FONT_STYLE = `
@@ -16,6 +37,7 @@ const FONT_STYLE = `
   @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pulseGlow { 0% { box-shadow: 0 0 15px rgba(251,191,36,0.3); } 100% { box-shadow: 0 0 30px rgba(251,191,36,0.6); } }
   
   .animate-slide { animation: slideUpFade 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
   .animate-scale { animation: scaleIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
@@ -63,10 +85,10 @@ const fmtMoney = (n, curr, lang) => {
   return new Intl.NumberFormat(lang === "bn" ? "bn-BD" : c.loc, { style: "currency", currency: c.code, minimumFractionDigits: 0 }).format(n || 0);
 };
 
-// 🚀 New: Format Date to DD/MM/YYYY for display
 const formatDate = (isoDate) => {
   if (!isoDate) return '';
   const [year, month, day] = isoDate.split('-');
+  if (!year || !month || !day) return isoDate;
   return `${day}/${month}/${year}`;
 };
 
@@ -78,10 +100,15 @@ const DEFAULT_DATA = {
 const DEFAULT_SETTINGS = { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "", recoveryWord: "" };
 
 export default function App() {
-  const [data, setData] = useState(() => { try { const saved = localStorage.getItem("nafinance_vpro_db"); return saved ? { ...DEFAULT_DATA, ...JSON.parse(saved) } : DEFAULT_DATA; } catch(e) { return DEFAULT_DATA; } });
-  const [settings, setSettings] = useState(() => { try { const saved = localStorage.getItem("nafinance_vpro_set"); return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS; } catch(e) { return DEFAULT_SETTINGS; } });
+  const [data, setData] = useState(DEFAULT_DATA);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   
-  const [isAuthenticated, setIsAuthenticated] = useState(!settings.pinLock);
+  // 🔐 Auth States
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isDbLoaded, setIsDbLoaded] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
   const [tab, setTab] = useState("home");
   const [modal, setModal] = useState(null);
   const [editTxData, setEditTxData] = useState(null); 
@@ -91,8 +118,46 @@ export default function App() {
 
   const showToast = (msg, type="error") => { setToastMsg({ msg, type }); setTimeout(() => setToastMsg(null), 2500); };
 
+  // 🔥 Listen for Google Auth State & Load Firestore Data
   useEffect(() => {
-    if(!data.recurring || data.recurring.length === 0) return;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        try {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const dbData = docSnap.data();
+            if (dbData.data) setData({ ...DEFAULT_DATA, ...dbData.data });
+            if (dbData.settings) {
+              const mergedSet = { ...DEFAULT_SETTINGS, ...dbData.settings };
+              setSettings(mergedSet);
+              setIsAuthenticated(!mergedSet.pinLock); // If no pin, auto-authenticate
+            }
+          } else {
+            // New user: Set default values
+            setIsAuthenticated(true);
+          }
+        } catch(err) { console.error("Firebase Read Error:", err); }
+        setIsDbLoaded(true);
+      } else {
+        setIsDbLoaded(false);
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 🔥 Auto Save to Firestore when data/settings change
+  useEffect(() => {
+    if (firebaseUser && isDbLoaded) {
+      setDoc(doc(db, "users", firebaseUser.uid), { data, settings }).catch(e => console.error("Firebase Sync Error:", e));
+    }
+  }, [data, settings, firebaseUser, isDbLoaded]);
+
+  // 🔄 Recurring Payments Logic
+  useEffect(() => {
+    if(!isDbLoaded || !data.recurring || data.recurring.length === 0) return;
     let updated = false; let newTxs = [...data.txs]; let newWs = [...data.wallets];
     const newRec = data.recurring.map(r => {
       if (r.nextDate <= TODAY()) {
@@ -102,11 +167,7 @@ export default function App() {
       } return r;
     });
     if (updated) { setData({ ...data, txs: newTxs, wallets: newWs, recurring: newRec }); showToast(settings.lang==='bn'?"স্বয়ংক্রিয় পেমেন্ট যোগ হয়েছে!":"Auto-payments added!", "success"); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => { localStorage.setItem("nafinance_vpro_db", JSON.stringify(data)); }, [data]);
-  useEffect(() => { localStorage.setItem("nafinance_vpro_set", JSON.stringify(settings)); }, [settings]);
+  }, [isDbLoaded]); // Runs once when DB loads
 
   const isDark = settings.theme === "dark";
   const TH = isDark 
@@ -115,6 +176,18 @@ export default function App() {
   
   const fmt = n => settings.hideBalance ? "••••" : fmtMoney(n, settings.curr, settings.lang);
   const getCategories = (type) => [...BASE_CATEGORIES[type], ...(data.customCategories?.[type] || [])];
+
+  const handleLogin = async () => {
+    try { await signInWithPopup(auth, googleProvider); } 
+    catch (err) { showToast("Login failed!", "error"); }
+  };
+
+  const handleLogout = () => {
+    auth.signOut();
+    setData(DEFAULT_DATA);
+    setSettings(DEFAULT_SETTINGS);
+    setModal(null);
+  };
 
   const saveTx = (tx, oldTx = null, isRecurring = false) => {
     let ws = [...data.wallets];
@@ -136,8 +209,12 @@ export default function App() {
     });
   };
 
-  if (!isAuthenticated) return <PinScreen settings={settings} setSettings={setSettings} onSuccess={() => setIsAuthenticated(true)} TH={TH} showToast={showToast} />;
+  // 🛡️ Pre-app Views
+  if (authLoading) return <LoadingScreen TH={TH} />;
+  if (!firebaseUser) return <AuthScreen TH={TH} onLogin={handleLogin} />;
+  if (!isAuthenticated && settings.pinLock) return <PinScreen settings={settings} setSettings={setSettings} onSuccess={() => setIsAuthenticated(true)} TH={TH} showToast={showToast} onLogout={handleLogout} />;
 
+  // 🚀 Main App UI
   return (
     <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, position: "relative" }}>
       <style>{FONT_STYLE}</style>
@@ -185,7 +262,9 @@ export default function App() {
               <NavBtn active={tab==="home"} icon={Home} label={settings.lang==='bn'?'হোম':'HOME'} onClick={()=>setTab("home")} TH={TH}/>
               <NavBtn active={tab==="assets"} icon={Wallet} label={settings.lang==='bn'?'ওয়ালেট':'WALLET'} onClick={()=>setTab("assets")} TH={TH}/>
             </div>
+            
             <div style={{ width: 75 }}></div> 
+            
             <div style={{ display: "flex", gap: 5, flex: 1, justifyContent: "space-around" }}>
               <NavBtn active={tab==="planning"} icon={Landmark} label={settings.lang==='bn'?'প্ল্যান':'PLAN'} onClick={()=>setTab("planning")} TH={TH}/>
               <NavBtn active={tab==="graphs"} icon={BarChart2} label={settings.lang==='bn'?'বিশ্লেষণ':'GRAPHS'} onClick={()=>setTab("graphs")} TH={TH}/>
@@ -198,7 +277,36 @@ export default function App() {
       </div>
 
       {modal === "tx" && <TxModal data={data} saveTx={saveTx} onClose={()=>setModal(null)} TH={TH} editData={editTxData} getCategories={getCategories} lang={settings.lang} showToast={showToast} />}
-      {modal === "settings" && <SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={()=>setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR} setConfirmDialog={setConfirmDialog} />}
+      {modal === "settings" && <SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={()=>setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR} setConfirmDialog={setConfirmDialog} onLogout={handleLogout} />}
+    </div>
+  );
+}
+
+// 🛡️ Auth Loading Screen
+function LoadingScreen({ TH }) {
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: TH.bg }}>
+      <style>{FONT_STYLE}</style>
+      <div style={{ width: 64, height: 64, background: TH.primary, borderRadius: 20, display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontWeight:900, fontSize: 28, animation: "pulseGlow 1s infinite alternate" }}>N</div>
+      <p style={{ marginTop: 25, color: TH.textMid, fontWeight: 700, fontSize: 14 }}>Connecting securely...</p>
+    </div>
+  );
+}
+
+// 🛡️ Login Screen
+function AuthScreen({ TH, onLogin }) {
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: TH.bg, padding: 20 }}>
+      <style>{FONT_STYLE}</style>
+      <div className="animate-scale" style={{ padding: 40, background: TH.bgCard, borderRadius: 32, border: `1px solid ${TH.border}`, textAlign: "center", boxShadow: `0 20px 50px rgba(0,0,0,0.5)`, width: "100%", maxWidth: 360 }}>
+        <div style={{ width: 64, height: 64, background: TH.primary, borderRadius: 20, display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontWeight:900, fontSize: 28, margin: "0 auto 20px", boxShadow: `0 10px 25px ${TH.glow}` }}>N</div>
+        <h2 style={{ fontSize: 24, fontWeight: 900, color: TH.primary, marginBottom: 10 }}>NaFinance</h2>
+        <p style={{ color: TH.textMid, fontSize: 14, fontWeight: 600, marginBottom: 35 }}>Premium Wealth Management</p>
+        <button onClick={onLogin} style={{ width: "100%", padding: 18, background: "#fff", color: "#000", borderRadius: 16, border: "none", fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 10px 25px rgba(255,255,255,0.1)" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.86C4.01 20.64 7.69 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.05H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.95l3.66-2.86z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.69 1 4.01 3.36 2.18 7.05l3.66 2.86c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Sign in with Google
+        </button>
+      </div>
     </div>
   );
 }
@@ -302,11 +410,7 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
             <div key={tx.id} className="tx-card" style={{ padding: "18px 20px", background: TH.bgCard, borderRadius: 24, border: `1px solid ${TH.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => { setEditTxData(tx); setModal("tx"); }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div style={{ width: 48, height: 48, borderRadius: 16, background: cat.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{cat.icon}</div>
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: 16, color: TH.text, marginBottom: 2 }}>{tx.note || cat.label[settings.lang] || cat.label['en']}</p>
-                  {/* 🚀 Date Display Format Updated */}
-                  <p style={{ fontSize: 12, color: TH.textMid, fontWeight:500 }}>{formatDate(tx.date)}</p>
-                </div>
+                <div><p style={{ fontWeight: 700, fontSize: 16, color: TH.text, marginBottom: 2 }}>{tx.note || cat.label[settings.lang] || cat.label['en']}</p><p style={{ fontSize: 12, color: TH.textMid, fontWeight:500 }}>{formatDate(tx.date)}</p></div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <p style={{ fontWeight: 800, fontSize: 16, color: tx.type === "income" ? "#10b981" : TH.text }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
@@ -447,7 +551,6 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
             <div style={{ width:42, height:42, borderRadius:14, background: d.type==='lend'?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', display:"flex", alignItems:"center", justifyContent:"center" }}><Users size={20} color={d.type==='lend'?'#10b981':'#ef4444'}/></div>
             <div>
               <p style={{ fontWeight: 700, fontSize:15, color:TH.text, marginBottom:2 }}>{d.person}</p>
-              {/* 🚀 Date Display Format Updated */}
               <p style={{ fontSize: 11, color: TH.textMid, fontWeight:600 }}>{settings.lang==='bn'?'ফেরত:':'Return:'} {d.returnDate ? formatDate(d.returnDate) : 'N/A'}</p>
             </div>
           </div>
@@ -712,7 +815,7 @@ function TxModal({ data, saveTx, onClose, TH, editData, getCategories, lang }) {
   );
 }
 
-function PinScreen({ settings, setSettings, onSuccess, TH, showToast }) {
+function PinScreen({ settings, setSettings, onSuccess, TH, showToast, onLogout }) {
   const [input, setInput] = useState(""); 
   const [isForgot, setIsForgot] = useState(false); 
   const [recIn, setRecIn] = useState("");
@@ -731,6 +834,7 @@ function PinScreen({ settings, setSettings, onSuccess, TH, showToast }) {
       <h2 style={{ fontWeight: 800, color: TH.text }}>Restore Access</h2>
       <input type="text" placeholder="Secret Word" value={recIn} onChange={e=>setRecIn(e.target.value)} style={{ width:"100%", maxWidth:300, padding:18, borderRadius:16, marginTop:30, background:TH.bgCard, border:`1px solid ${TH.border}`, color:TH.text, textAlign:"center", fontWeight:700, outline:"none" }} />
       <button onClick={()=>{ if(btoa(recIn.toLowerCase()) === settings.recoveryWord || recIn.toLowerCase() === settings.recoveryWord){ setSettings({...settings, pinLock:""}); onSuccess(); } else showToast("ভুল শব্দ!", "error"); }} style={{ width:"100%", maxWidth:300, padding:18, background:TH.primary, color:"#000", border:"none", borderRadius:16, fontWeight:800, marginTop:15 }}>Unlock</button>
+      <button onClick={()=>setIsForgot(false)} style={{ marginTop: 20, color: TH.textMid, background: "none", border: "none", fontWeight: 700, fontSize:14 }}>Cancel</button>
     </div>
   );
   
@@ -743,12 +847,15 @@ function PinScreen({ settings, setSettings, onSuccess, TH, showToast }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
         {[1,2,3,4,5,6,7,8,9, "C", 0, "×"].map(k => (<button key={k} onClick={() => { if(k==="C") setInput(""); else if(k==="×") setInput(input.slice(0,-1)); else handleKey(k.toString()); }} style={{ width: 75, height: 75, borderRadius: "50%", background: TH.bgCard, border: `1px solid ${TH.border}`, color: TH.text, fontSize: 24, fontWeight: 800 }}>{k}</button>))}
       </div>
-      <button onClick={()=>setIsForgot(true)} style={{ marginTop: 40, color: TH.textMid, background: "none", border: "none", fontWeight: 700, fontSize:14 }}>Forgot PIN?</button>
+      <div style={{ display: "flex", gap: 30, marginTop: 40 }}>
+        <button onClick={()=>setIsForgot(true)} style={{ color: TH.textMid, background: "none", border: "none", fontWeight: 700, fontSize:14 }}>Forgot PIN?</button>
+        <button onClick={onLogout} style={{ color: "#ef4444", background: "none", border: "none", fontWeight: 700, fontSize:14, display: "flex", alignItems: "center", gap: 5 }}><LogOut size={16}/> Logout</button>
+      </div>
     </div>
   );
 }
 
-function SettingsModal({ settings, setSettings, data, setData, onClose, TH, showToast, AUTHOR, setConfirmDialog }) {
+function SettingsModal({ settings, setSettings, data, setData, onClose, TH, showToast, AUTHOR, setConfirmDialog, onLogout }) {
   const [newPin, setNewPin] = useState(""); 
   const [recovery, setRecovery] = useState(""); 
   const [newCat, setNewCat] = useState({ type: "expense", name: "", icon: "📦", color: "#8b5cf6" }); 
@@ -802,11 +909,13 @@ function SettingsModal({ settings, setSettings, data, setData, onClose, TH, show
           {settings.pinLock && <button onClick={()=>setSettings({...settings, pinLock:"", recoveryWord:""})} style={{ width:"100%", marginTop:10, color:"#ef4444", fontWeight:700, background:"none", border:"none", fontSize:14 }}>Disable PIN</button>}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}>
           <button onClick={()=>{ const blob = new Blob([JSON.stringify({data, settings})], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `NaFinance_Backup.json`; link.click(); showToast("Backup Success", "success"); }} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, color: TH.text, fontWeight: 700, border:"none", fontSize:14 }}>Backup</button>
           <label style={{ padding: 14, borderRadius: 16, background: TH.bgInner, color: TH.text, fontWeight: 700, textAlign:"center", cursor:"pointer", fontSize:14 }}>Restore <input type="file" style={{display:"none"}} onChange={(e)=>{ const reader = new FileReader(); reader.onload = (ev) => { try { const p = JSON.parse(ev.target.result); if(p.data) setData({...DEFAULT_DATA, ...p.data}); if(p.settings) setSettings({...DEFAULT_SETTINGS, ...p.settings}); showToast("Restore Success", "success"); } catch(err) { showToast("Invalid File", "error"); } }; reader.readAsText(e.target.files[0]); }}/></label>
         </div>
-        <button onClick={()=>{ setConfirmDialog({show:true, msg:settings.lang==='bn'?"সব ডেটা মুছে যাবে! নিশ্চিত?":"Are you sure to Reset?", onConfirm:()=>{localStorage.clear(); window.location.reload();}}) }} style={{ width: "100%", padding: 16, background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "none", borderRadius: 16, fontWeight: 800, fontSize:14 }}>Factory Reset</button>
+        
+        <button onClick={onLogout} style={{ width: "100%", padding: 16, background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "none", borderRadius: 16, fontWeight: 800, fontSize:14, marginBottom: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><LogOut size={18}/> Log Out (Google)</button>
+        <button onClick={()=>{ setConfirmDialog({show:true, msg:settings.lang==='bn'?"সব ডেটা মুছে যাবে! নিশ্চিত?":"Are you sure to Reset?", onConfirm:()=>{localStorage.clear(); window.location.reload();}}) }} style={{ width: "100%", padding: 16, background: "transparent", color: TH.textMid, border: `1px solid ${TH.border}`, borderRadius: 16, fontWeight: 700, fontSize:14 }}>Factory Reset</button>
         
         {/* 🚀 Premium Developer Info Card with Email */}
         <div className="animate-scale" style={{ marginTop: 30, padding: 20, background: "linear-gradient(145deg, rgba(251,191,36,0.1), rgba(251,191,36,0.02))", borderRadius: 24, border: `1px solid rgba(251,191,36,0.3)`, display: "flex", alignItems: "center", gap: 16 }}>
