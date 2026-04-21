@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { BarChart, Bar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, Legend } from "recharts";
-import { Plus, Trash2, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut, DownloadCloud } from "lucide-react";
+import { Plus, Trash2, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut, DownloadCloud, Zap, Hash, Paperclip, Loader2, Image as ImageIcon } from "lucide-react";
 
 // 🔥 Firebase Imports
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const AUTHOR = "Mushfiqur Rahman Nafi";
 const APP_NAME = "NaFinance";
@@ -24,6 +25,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
 // 🚀 Premium Navy & Gold UI Animations
@@ -39,6 +41,8 @@ const FONT_STYLE = `
   @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes pulseGlow { 0% { box-shadow: 0 0 15px rgba(251,191,36,0.3); } 100% { box-shadow: 0 0 30px rgba(251,191,36,0.6); } }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+  .animate-spin { animation: spin 1s linear infinite; }
   
   .animate-slide { animation: slideUpFade 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
   .animate-slide-down { animation: slideDownFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
@@ -96,7 +100,7 @@ const formatDate = (isoDate) => {
 
 const DEFAULT_DATA = { 
   txs: [], wallets: [{ id: "w1", name: "Cash", balance: 0, icon: "💵" }, { id: "w2", name: "Bank", balance: 0, icon: "🏦" }], 
-  debts: [], goals: [], budgets: {}, savings: { balance: 0, history: [] }, customCategories: { expense: [], income: [] }, dismissedAlerts: [], recurring: [] 
+  debts: [], goals: [], budgets: {}, savings: { balance: 0, history: [] }, customCategories: { expense: [], income: [] }, dismissedAlerts: [], recurring: [], templates: [] 
 };
 
 const DEFAULT_SETTINGS = { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "", recoveryWord: "" };
@@ -105,13 +109,11 @@ export default function App() {
   const [data, setData] = useState(DEFAULT_DATA);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   
-  // 🔐 Auth States
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // 📱 PWA Install States
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
@@ -124,7 +126,6 @@ export default function App() {
 
   const showToast = (msg, type="error") => { setToastMsg({ msg, type }); setTimeout(() => setToastMsg(null), 2500); };
 
-  // 🔥 Listen for App Install Event (PWA)
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -146,7 +147,6 @@ export default function App() {
     }
   };
 
-  // 🔥 Listen for Google Auth State & Load Firestore Data
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
@@ -175,21 +175,19 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 🔥 Auto Save to Firestore
   useEffect(() => {
     if (firebaseUser && isDbLoaded) {
       setDoc(doc(db, "users", firebaseUser.uid), { data, settings }).catch(e => console.error("Firebase Sync Error:", e));
     }
   }, [data, settings, firebaseUser, isDbLoaded]);
 
-  // 🔄 Recurring Payments Logic
   useEffect(() => {
     if(!isDbLoaded || !data.recurring || data.recurring.length === 0) return;
     let updated = false; let newTxs = [...data.txs]; let newWs = [...data.wallets];
     const newRec = data.recurring.map(r => {
       if (r.nextDate <= TODAY()) {
         const wIdx = newWs.findIndex(w => w.id === r.walletId);
-        if (wIdx > -1) { newWs[wIdx].balance += (r.type === 'income' ? r.amount : -r.amount); newTxs.push({ id: genId(), type: r.type, date: r.nextDate, amount: r.amount, category: r.category, walletId: r.walletId, note: `[Auto] ${r.note}` }); updated = true; }
+        if (wIdx > -1) { newWs[wIdx].balance += (r.type === 'income' ? r.amount : -r.amount); newTxs.push({ id: genId(), type: r.type, date: r.nextDate, amount: r.amount, category: r.category, walletId: r.walletId, note: `[Auto] ${r.note}`, tags: [] }); updated = true; }
         const nextMonth = new Date(r.nextDate); nextMonth.setMonth(nextMonth.getMonth() + 1); return { ...r, nextDate: nextMonth.toISOString().split("T")[0] };
       } return r;
     });
@@ -216,16 +214,23 @@ export default function App() {
     setModal(null);
   };
 
-  const saveTx = (tx, oldTx = null, isRecurring = false) => {
+  const saveTx = (tx, oldTx = null, isRecurring = false, saveAsTemplate = false) => {
     let ws = [...data.wallets];
     if (oldTx) { ws = ws.map(w => w.id === oldTx.walletId ? { ...w, balance: oldTx.type === "income" ? w.balance - oldTx.amount : w.balance + oldTx.amount } : w); }
     const isInc = tx.type === "income"; const targetW = ws.find(w => w.id === tx.walletId);
-    if (!targetW) return showToast("Wallet error", "error");
+    if (!targetW) { showToast("Wallet error", "error"); return false; }
     if (!isInc && targetW.balance < tx.amount) { showToast(settings.lang==='bn'?"ব্যালেন্স নেই!":"Insufficient Balance", "error"); return false; }
     ws = ws.map(w => w.id === tx.walletId ? { ...w, balance: isInc ? w.balance + tx.amount : w.balance - tx.amount } : w);
-    let newRecs = data.recurring || [];
+    
+    let newRecs = [...(data.recurring || [])];
     if(isRecurring && !oldTx) { const d = new Date(tx.date); d.setMonth(d.getMonth() + 1); newRecs.push({ ...tx, nextDate: d.toISOString().split("T")[0] }); }
-    setData({ ...data, txs: oldTx ? data.txs.map(t => t.id === oldTx.id ? tx : t) : [tx, ...data.txs], wallets: ws, recurring: newRecs });
+    
+    let newTemplates = [...(data.templates || [])];
+    if(saveAsTemplate && !oldTx) {
+       newTemplates.push({ id: genId(), type: tx.type, amount: tx.amount, category: tx.category, walletId: tx.walletId, note: tx.note || "Template", tags: tx.tags || [] });
+    }
+
+    setData({ ...data, txs: oldTx ? data.txs.map(t => t.id === oldTx.id ? tx : t) : [tx, ...data.txs], wallets: ws, recurring: newRecs, templates: newTemplates });
     showToast(settings.lang==='bn'?"সফল!":"Success!", "success"); return true;
   };
 
@@ -236,6 +241,11 @@ export default function App() {
     });
   };
 
+  const deleteTemplate = id => {
+     setData({ ...data, templates: data.templates.filter(t => t.id !== id) });
+     showToast("Template Removed", "success");
+  };
+
   if (authLoading) return <LoadingScreen TH={TH} />;
   if (!firebaseUser) return <AuthScreen TH={TH} onLogin={handleLogin} />;
   if (!isAuthenticated && settings.pinLock) return <PinScreen settings={settings} setSettings={setSettings} onSuccess={() => setIsAuthenticated(true)} TH={TH} showToast={showToast} onLogout={handleLogout} />;
@@ -244,7 +254,6 @@ export default function App() {
     <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, position: "relative" }}>
       <style>{FONT_STYLE}</style>
       
-      {/* 🚀 App Install Prompt (PWA Banner) */}
       {showInstallPrompt && (
         <div className="animate-slide-down" style={{ position: "fixed", top: 15, left: "50%", transform: "translateX(-50%)", width: "90%", maxWidth: 440, background: TH.bgCard, padding: "16px 20px", borderRadius: 20, zIndex: 7000, display: "flex", alignItems: "center", justifyContent: "space-between", border: `1px solid ${TH.primary}`, boxShadow: `0 15px 40px rgba(0,0,0,0.6)` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -295,7 +304,7 @@ export default function App() {
       </header>
 
       <main className="animate-slide" style={{ maxWidth: 480, margin: "0 auto", padding: "15px 20px 140px" }}>
-        {tab === "home" && <HomeView data={data} setData={setData} fmt={fmt} TH={TH} settings={settings} setSettings={setSettings} getCategories={getCategories} deleteTx={deleteTx} setEditTxData={setEditTxData} setModal={setModal} setConfirmDialog={setConfirmDialog} />}
+        {tab === "home" && <HomeView data={data} setData={setData} fmt={fmt} TH={TH} settings={settings} setSettings={setSettings} getCategories={getCategories} deleteTx={deleteTx} setEditTxData={setEditTxData} setModal={setModal} setConfirmDialog={setConfirmDialog} deleteTemplate={deleteTemplate} saveTx={saveTx} />}
         {tab === "assets" && <AssetsView data={data} setData={setData} fmt={fmt} TH={TH} showToast={showToast} settings={settings} setConfirmDialog={setConfirmDialog} />}
         {tab === "planning" && <PlanningView data={data} setData={setData} fmt={fmt} TH={TH} settings={settings} getCategories={getCategories} showToast={showToast} setConfirmDialog={setConfirmDialog} />}
         {tab === "graphs" && <GraphsView data={data} fmt={fmt} TH={TH} lang={settings.lang} getCategories={getCategories} />}
@@ -322,7 +331,7 @@ export default function App() {
         </div>
       </div>
 
-      {modal === "tx" && <TxModal data={data} saveTx={saveTx} deleteTx={deleteTx} onClose={()=>setModal(null)} TH={TH} editData={editTxData} getCategories={getCategories} lang={settings.lang} showToast={showToast} />}
+      {modal === "tx" && <TxModal data={data} saveTx={saveTx} deleteTx={deleteTx} onClose={()=>setModal(null)} TH={TH} editData={editTxData} getCategories={getCategories} lang={settings.lang} showToast={showToast} firebaseUser={firebaseUser} storage={storage} />}
       {modal === "settings" && <SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={()=>setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR} setConfirmDialog={setConfirmDialog} onLogout={handleLogout} />}
     </div>
   );
@@ -357,7 +366,7 @@ function AuthScreen({ TH, onLogin }) {
   );
 }
 
-function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories, deleteTx, setEditTxData, setModal, setConfirmDialog }) {
+function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories, deleteTx, setEditTxData, setModal, setConfirmDialog, deleteTemplate, saveTx }) {
   const [search, setSearch] = useState(""); const [filterCat, setFilterCat] = useState("all"); const [dateRange, setDateRange] = useState("month"); 
   const total = data.wallets.reduce((s, w) => s + w.balance, 0); const currentMonth = TODAY().slice(0,7);
   const monthlyInc = data.txs.filter(x => x.type === "income" && x.date.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0);
@@ -377,20 +386,21 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
     if(dateRange === 'week') { const txDate = new Date(tx.date); const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7); if(txDate < weekAgo) return false; }
     const cat = getCategories(tx.type).find(c => c.id === tx.category); const s = search.toLowerCase();
     const matchFilter = filterCat === "all" || tx.category === filterCat;
-    const matchSearch = !s || tx.note?.toLowerCase().includes(s) || cat?.label?.bn?.includes(s) || cat?.label?.en?.toLowerCase().includes(s);
+    const tagMatch = tx.tags?.some(tag => tag.toLowerCase().includes(s));
+    const matchSearch = !s || tx.note?.toLowerCase().includes(s) || cat?.label?.bn?.includes(s) || cat?.label?.en?.toLowerCase().includes(s) || tagMatch;
     return matchFilter && matchSearch;
   });
 
   const exportCSV = () => {
-    const headers = "Date,Type,Category,Amount,Note\n";
-    const rows = data.txs.map(t => { const cat = getCategories(t.type).find(c => c.id === t.category); return `${formatDate(t.date)},${t.type},${cat ? cat.label.en : t.category},${t.amount},"${t.note||''}"`; }).join("\n");
+    const headers = "Date,Type,Category,Amount,Note,Tags,Receipt\n";
+    const rows = data.txs.map(t => { const cat = getCategories(t.type).find(c => c.id === t.category); return `${formatDate(t.date)},${t.type},${cat ? cat.label.en : t.category},${t.amount},"${t.note||''}","${t.tags?t.tags.join(' '):''}","${t.imageUrl||''}"`; }).join("\n");
     const blob = new Blob([headers + rows], {type: "text/csv;charset=utf-8;"}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `NaFinance_${TODAY()}.csv`; link.click();
   };
 
   const exportPDF = () => {
     const win = window.open('', '', 'height=800,width=1000');
     let html = `<html lang="en"><head><title>NaFinance Report</title><style> body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; color: #333; } h2 { text-align: center; color: #8b5cf6; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th, td { border: 1px solid #ddd; padding: 12px; text-align: left; } th { background-color: #8b5cf6; color: white; } .inc { color: #10b981; } .exp { color: #ef4444; } </style></head><body><h2>NaFinance - Statement</h2><p style="text-align:center">Date: ${formatDate(TODAY())}</p><table><tr><th>Date</th><th>Category</th><th>Wallet</th><th>Note</th><th>Type</th><th>Amount</th></tr>`;
-    data.txs.forEach(tx => { const cat = getCategories(tx.type).find(c => c.id === tx.category) || {label:{en:'Other'}}; const w = data.wallets.find(w => w.id === tx.walletId) || {name: 'Unknown'}; html += `<tr><td>${formatDate(tx.date)}</td><td>${cat.label.en}</td><td>${w.name}</td><td>${tx.note || '-'}</td><td class="${tx.type === 'income' ? 'inc' : 'exp'}">${tx.type.toUpperCase()}</td><td class="${tx.type === 'income' ? 'inc' : 'exp'}">${fmtMoney(tx.amount, settings.curr, 'en')}</td></tr>`; });
+    data.txs.forEach(tx => { const cat = getCategories(tx.type).find(c => c.id === tx.category) || {label:{en:'Other'}}; const w = data.wallets.find(w => w.id === tx.walletId) || {name: 'Unknown'}; html += `<tr><td>${formatDate(tx.date)}</td><td>${cat.label.en}</td><td>${w.name}</td><td>${tx.note || '-'} ${tx.tags?.length ? `(${tx.tags.join(', ')})` : ''}</td><td class="${tx.type === 'income' ? 'inc' : 'exp'}">${tx.type.toUpperCase()}</td><td class="${tx.type === 'income' ? 'inc' : 'exp'}">${fmtMoney(tx.amount, settings.curr, 'en')}</td></tr>`; });
     html += `</table></body></html>`; win.document.write(html); win.document.close(); setTimeout(() => win.print(), 800); 
   };
 
@@ -437,11 +447,34 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
           <option value="week">{settings.lang==='bn'?'গত ৭ দিন':'Last 7 Days'}</option>
         </select>
       </div>
+
+      {data.templates && data.templates.length > 0 && (
+         <div>
+           <p style={{ fontSize: 12, color: TH.textMid, fontWeight: 700, textTransform: "uppercase", marginBottom: 10, display:"flex", alignItems:"center", gap:5 }}><Zap size={14} color={TH.primary}/> {settings.lang==='bn'?'কুইক অ্যাড':'Quick Add'}</p>
+           <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 5 }}>
+             {data.templates.map(tmp => {
+                const cat = getCategories(tmp.type).find(c => c.id === tmp.category) || {icon:"📝"};
+                return (
+                  <div key={tmp.id} className="animate-scale" style={{ flexShrink: 0, display:"flex", alignItems:"center", background: TH.bgCard, border: `1px solid ${TH.border}`, borderRadius: 16, padding: "8px 12px", gap: 8 }}>
+                    <button onClick={() => {
+                        const defaultWalletId = data.wallets.find(w => w.id === tmp.walletId)?.id || (data.wallets.length > 0 ? data.wallets[0].id : "");
+                        const newTx = { id: genId(), type: tmp.type, date: TODAY(), amount: tmp.amount, category: tmp.category, walletId: defaultWalletId, note: tmp.note, tags: tmp.tags || [], imageUrl: null };
+                        saveTx(newTx, null, false, false);
+                    }} style={{ display:"flex", alignItems:"center", gap:8, background:"none", border:"none", color:TH.text, fontWeight:700, fontSize:13 }}>
+                       <span style={{fontSize:16}}>{cat.icon}</span> {tmp.note} ({fmt(tmp.amount)})
+                    </button>
+                    <button onClick={()=>deleteTemplate(tmp.id)} style={{ background:"none", border:"none", color:TH.textMid, marginLeft: 5, padding:2 }}><X size={14}/></button>
+                  </div>
+                )
+             })}
+           </div>
+         </div>
+      )}
       
       <div style={{ display: "flex", gap: 10, width: "100%" }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, background: TH.bgCard, padding: "14px 18px", borderRadius: 20, border: `1px solid ${TH.border}` }}>
           <Search size={18} color={TH.textMid} style={{ flexShrink: 0 }}/>
-          <input type="text" placeholder={settings.lang==='bn'?'খুঁজুন...':'Search transactions...'} value={search} onChange={e=>setSearch(e.target.value)} style={{ background:"none", border:"none", color:TH.text, outline:"none", width:"100%", fontSize:15, fontWeight:600 }}/>
+          <input type="text" placeholder={settings.lang==='bn'?'নোট বা #ট্যাগ খুঁজুন...':'Search notes or #tags...'} value={search} onChange={e=>setSearch(e.target.value)} style={{ background:"none", border:"none", color:TH.text, outline:"none", width:"100%", fontSize:15, fontWeight:600 }}/>
         </div>
         <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} style={{ width: "115px", flexShrink: 0, padding: "0 14px", borderRadius: 20, background: TH.bgCard, border: `1px solid ${TH.border}`, color: TH.text, fontWeight: 700, outline:"none", fontSize:14, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
           <option value="all">All</option>
@@ -457,13 +490,20 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div style={{ width: 48, height: 48, borderRadius: 16, background: cat.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{cat.icon}</div>
                 <div>
-                  <p style={{ fontWeight: 700, fontSize: 16, color: TH.text, marginBottom: 2 }}>{tx.note || cat.label[settings.lang] || cat.label['en']}</p>
-                  <p style={{ fontSize: 12, color: TH.textMid, fontWeight:500 }}>{formatDate(tx.date)}</p>
+                  <p style={{ fontWeight: 700, fontSize: 16, color: TH.text, marginBottom: 2, display:"flex", alignItems:"center", gap:6 }}>
+                     {tx.note || cat.label[settings.lang] || cat.label['en']} 
+                     {tx.imageUrl && <Paperclip size={14} color={TH.textMid} />}
+                  </p>
+                  <p style={{ fontSize: 12, color: TH.textMid, fontWeight:500, display:"flex", alignItems:"center", gap:6 }}>
+                     {formatDate(tx.date)}
+                     {tx.tags && tx.tags.length > 0 && (
+                        <span style={{ color: TH.primary, fontWeight:700 }}>{tx.tags.map(t => `#${t}`).join(' ')}</span>
+                     )}
+                  </p>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <p style={{ fontWeight: 800, fontSize: 16, color: tx.type === "income" ? "#10b981" : TH.text }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
-                {/* 🔥 Added Delete Icon directly in the list! */}
                 <button onClick={(e) => { e.stopPropagation(); deleteTx(tx); }} style={{ background: "none", border: "none", color: "#ef4444", padding: "4px 0 4px 8px" }}><Trash2 size={18}/></button>
               </div>
             </div>
@@ -483,7 +523,7 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
     const amt = Number(debtForm.amount); if(!debtForm.person || !amt) return showToast(settings.lang==='bn'?"সব তথ্য দিন":"Enter info", "error");
     let ws = [...data.wallets]; const tIdx = ws.findIndex(w => w.id === debtForm.sourceId);
     if (debtForm.type === "lend") { if (ws[tIdx].balance < amt) return showToast(settings.lang==='bn'?"টাকা নেই":"No cash", "error"); ws[tIdx].balance -= amt; } else { ws[tIdx].balance += amt; }
-    const tx = { id: genId(), type: debtForm.type === 'lend' ? 'expense' : 'income', date: debtForm.date, amount: amt, category: debtForm.type === 'lend' ? 'other_ex' : 'other_in', walletId: debtForm.sourceId, note: `${debtForm.type==='lend'?'ধার:':'ঋণ:'} ${debtForm.person}` };
+    const tx = { id: genId(), type: debtForm.type === 'lend' ? 'expense' : 'income', date: debtForm.date, amount: amt, category: debtForm.type === 'lend' ? 'other_ex' : 'other_in', walletId: debtForm.sourceId, note: `${debtForm.type==='lend'?'ধার:':'ঋণ:'} ${debtForm.person}`, tags:[] };
     setData({ ...data, wallets: ws, txs: [tx, ...data.txs], debts: [{...debtForm, id: genId(), amount: amt}, ...data.debts] });
     setDebtForm({ show: false, person: "", amount: "", type: "lend", date: TODAY(), returnDate: "", note: "", sourceId: "w1" }); showToast(settings.lang==='bn'?"সংরক্ষিত":"Saved", "success");
   };
@@ -512,8 +552,8 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
     if (ws[fromIdx].balance < amt) return showToast(settings.lang==='bn'?"টাকা নেই":"Insufficient Balance", "error");
     ws[fromIdx].balance -= amt; ws[toIdx].balance += amt;
     const fromName = ws[fromIdx].name; const toName = ws[toIdx].name;
-    const txOut = { id: genId(), type: 'expense', date: TODAY(), amount: amt, category: 'other_ex', walletId: transferForm.from, note: `Transfer to ${toName} ${transferForm.note ? `(${transferForm.note})` : ''}` };
-    const txIn = { id: genId(), type: 'income', date: TODAY(), amount: amt, category: 'other_in', walletId: transferForm.to, note: `Transfer from ${fromName} ${transferForm.note ? `(${transferForm.note})` : ''}` };
+    const txOut = { id: genId(), type: 'expense', date: TODAY(), amount: amt, category: 'other_ex', walletId: transferForm.from, note: `Transfer to ${toName} ${transferForm.note ? `(${transferForm.note})` : ''}`, tags:[] };
+    const txIn = { id: genId(), type: 'income', date: TODAY(), amount: amt, category: 'other_in', walletId: transferForm.to, note: `Transfer from ${fromName} ${transferForm.note ? `(${transferForm.note})` : ''}`, tags:[] };
     setData({ ...data, wallets: ws, txs: [txOut, txIn, ...data.txs] });
     setTransferForm({ ...transferForm, show: false, amount: "", note: "" }); showToast(settings.lang==='bn'?"ট্রান্সফার সফল!":"Transfer Success!", "success");
   };
@@ -617,16 +657,16 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
 
 function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToast, setConfirmDialog }) {
   const [subTab, setSubTab] = useState("vault");
-  const [saveAmt, setSaveAmt] = useState(""); const [saveNote, setSaveNote] = useState(""); const [vaultWallet, setVaultWallet] = useState("w1"); 
+  const [saveAmt, setSaveAmt] = useState(""); const [saveNote, setSaveNote] = useState(""); const [vaultWallet, setVaultWallet] = useState(data.wallets[0]?.id || ""); 
   const [goalForm, setGoalForm] = useState({ show: false, name: "", target: "", note: "", id: null });
-  const [addCashId, setAddCashId] = useState(null); const [addCashAmt, setAddCashAmt] = useState(""); const [addCashWallet, setAddCashWallet] = useState("w1");
+  const [addCashId, setAddCashId] = useState(null); const [addCashAmt, setAddCashAmt] = useState(""); const [addCashWallet, setAddCashWallet] = useState(data.wallets[0]?.id || "");
   const [limitVal, setLimitVal] = useState(""); const [budgetCat, setBudgetCat] = useState("");
 
   const handleVault = (type) => {
     const n = Number(saveAmt); if (!n) return; let ws = [...data.wallets]; let sv = { ...data.savings }; let txs = [...data.txs];
     const wIdx = ws.findIndex(w => w.id === vaultWallet); if(wIdx === -1) return showToast("Wallet error", "error");
-    if (type === 'deposit') { if (ws[wIdx].balance < n) return showToast("No cash", "error"); ws[wIdx].balance -= n; sv.balance += n; const msg = saveNote || "Vault Deposit"; sv.history = [{ id: genId(), date: TODAY(), amount: n, type: 'deposit', note: msg }, ...(sv.history || [])]; txs = [{ id: genId(), type:'expense', date: TODAY(), amount: n, category:'other_ex', walletId: vaultWallet, note: msg }, ...txs]; } 
-    else { if (sv.balance < n) return showToast("Vault Empty", "error"); ws[wIdx].balance += n; sv.balance -= n; const msg = saveNote || "Vault Withdraw"; sv.history = [{ id: genId(), date: TODAY(), amount: n, type: 'withdraw', note: msg }, ...(sv.history || [])]; txs = [{ id: genId(), type:'income', date: TODAY(), amount: n, category:'other_in', walletId: vaultWallet, note: msg }, ...txs]; }
+    if (type === 'deposit') { if (ws[wIdx].balance < n) return showToast("No cash", "error"); ws[wIdx].balance -= n; sv.balance += n; const msg = saveNote || "Vault Deposit"; sv.history = [{ id: genId(), date: TODAY(), amount: n, type: 'deposit', note: msg }, ...(sv.history || [])]; txs = [{ id: genId(), type:'expense', date: TODAY(), amount: n, category:'other_ex', walletId: vaultWallet, note: msg, tags:[] }, ...txs]; } 
+    else { if (sv.balance < n) return showToast("Vault Empty", "error"); ws[wIdx].balance += n; sv.balance -= n; const msg = saveNote || "Vault Withdraw"; sv.history = [{ id: genId(), date: TODAY(), amount: n, type: 'withdraw', note: msg }, ...(sv.history || [])]; txs = [{ id: genId(), type:'income', date: TODAY(), amount: n, category:'other_in', walletId: vaultWallet, note: msg, tags:[] }, ...txs]; }
     setData({...data, wallets: ws, savings: sv, txs: txs}); setSaveAmt(""); setSaveNote(""); showToast("Success", "success");
   };
 
@@ -634,7 +674,7 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
     const amt = Number(addCashAmt); if(!amt) return; let ws = [...data.wallets]; const wIdx = ws.findIndex(w => w.id === addCashWallet);
     if(wIdx === -1 || ws[wIdx].balance < amt) return showToast(settings.lang==='bn'?"ব্যালেন্স নেই!":"Insufficient Balance", "error");
     ws[wIdx].balance -= amt; const newGoals = data.goals.map(g => g.id === goalId ? { ...g, saved: g.saved + amt } : g);
-    const tx = { id: genId(), type:'expense', date: TODAY(), amount: amt, category:'other_ex', walletId: addCashWallet, note: `${settings.lang==='bn'?'লক্ষ্য:':'Goal:'} ${data.goals.find(x=>x.id===goalId).name}` };
+    const tx = { id: genId(), type:'expense', date: TODAY(), amount: amt, category:'other_ex', walletId: addCashWallet, note: `${settings.lang==='bn'?'লক্ষ্য:':'Goal:'} ${data.goals.find(x=>x.id===goalId).name}`, tags:[] };
     setData({ ...data, wallets: ws, goals: newGoals, txs: [tx, ...data.txs] }); setAddCashId(null); setAddCashAmt(""); showToast(settings.lang==='bn'?"টাকা এড হয়েছে":"Added", "success");
   };
 
@@ -663,7 +703,6 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
             </div>
           </div>
 
-          {/* 🔥 ADDED SAVINGS RECENT HISTORY WITH 100% SAFE DELETE OPTION */}
           {(data.savings.history && data.savings.history.length > 0) && (
             <div style={{ marginTop: 10 }}>
               <p style={{ fontWeight: 700, marginBottom: 12, color: TH.textMid, fontSize: 13, textTransform: "uppercase" }}>{settings.lang==='bn'?'সাম্প্রতিক হিস্ট্রি':'Recent History'}</p>
@@ -678,27 +717,17 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
                        <p style={{ fontWeight: 800, fontSize: 16, color: sv.type === 'deposit' ? "#10b981" : "#ef4444" }}>{sv.type === 'deposit' ? "+" : "-"}{fmt(sv.amount)}</p>
                        <button onClick={() => {
                           setConfirmDialog({ show: true, msg: settings.lang==='bn'?"এই হিস্ট্রি মুছবেন?":"Delete this record?", onConfirm: () => {
-                             // 1. Revert Vault Balance
                              let svNew = { ...data.savings };
                              svNew.balance = sv.type === 'deposit' ? svNew.balance - sv.amount : svNew.balance + sv.amount;
                              svNew.history = svNew.history.filter(x => x.id !== sv.id);
-                             
-                             // 2. Find and remove matching transaction from Home AND refund Wallet
                              const matchingTx = data.txs.find(t => t.date === sv.date && t.amount === sv.amount && t.note === sv.note);
                              let newWs = [...data.wallets];
                              let newTxs = [...data.txs];
-                             
                              if (matchingTx) {
                                  const wIdx = newWs.findIndex(w => w.id === matchingTx.walletId);
-                                 if (wIdx > -1) {
-                                     newWs[wIdx].balance += (matchingTx.type === 'expense' ? matchingTx.amount : -matchingTx.amount);
-                                 }
+                                 if (wIdx > -1) { newWs[wIdx].balance += (matchingTx.type === 'expense' ? matchingTx.amount : -matchingTx.amount); }
                                  newTxs = newTxs.filter(t => t.id !== matchingTx.id);
-                             } else if (newWs[0]) {
-                                 // Fallback if transaction was manually deleted earlier
-                                 newWs[0].balance += (sv.type === 'deposit' ? sv.amount : -sv.amount);
-                             }
-                             
+                             } else if (newWs[0]) { newWs[0].balance += (sv.type === 'deposit' ? sv.amount : -sv.amount); }
                              setData({ ...data, savings: svNew, wallets: newWs, txs: newTxs });
                              showToast(settings.lang==='bn'?"মুছে ফেলা হয়েছে":"Deleted", "success");
                           }});
@@ -879,17 +908,51 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
   );
 }
 
-function TxModal({ data, saveTx, deleteTx, onClose, TH, editData, getCategories, lang }) {
+function TxModal({ data, saveTx, deleteTx, onClose, TH, editData, getCategories, lang, firebaseUser, storage, showToast }) {
   const [type, setType] = useState(editData?.type || "expense"); 
-  const [f, setF] = useState(editData || { date: TODAY(), category: "food", amount: "", note: "", walletId: "w1" }); 
+  const [f, setF] = useState(editData || { date: TODAY(), category: "food", amount: "", note: "", walletId: data.wallets[0]?.id || "", tags: [], imageUrl: null }); 
   const [isRecurring, setIsRecurring] = useState(false); 
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [tagInput, setTagInput] = useState(editData?.tags ? editData.tags.join(', ') : "");
+
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
   
+  const handleFinalSave = async () => {
+     // 🔥 Zero amount checking bug fix
+     if (!f.amount || Number(f.amount) <= 0) {
+        showToast(lang==='bn'?"সঠিক পরিমাণ দিন":"Enter a valid amount", "error");
+        return;
+     }
+
+     let finalUrl = f.imageUrl;
+     
+     if (file && firebaseUser) {
+        setUploading(true);
+        try {
+           const fileRef = ref(storage, `receipts/${firebaseUser.uid}/${Date.now()}_${file.name}`);
+           await uploadBytes(fileRef, file);
+           finalUrl = await getDownloadURL(fileRef);
+        } catch (err) {
+           console.error("Upload failed", err);
+           showToast(lang==='bn'?"ছবি আপলোড ব্যর্থ হয়েছে!":"Upload failed!", "error");
+           setUploading(false);
+           return; 
+        }
+        setUploading(false);
+     }
+     
+     // 🔥 Success boolean check fix
+     const success = saveTx({...f, type, amount: Number(f.amount), id: editData?.id || genId(), imageUrl: finalUrl}, editData, isRecurring, saveAsTemplate);
+     if (success) onClose();
+  };
+
   return (
-    <div className="animate-fade" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 2000, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 10, backdropFilter: "blur(8px)" }}>
-      <div className="animate-slide" style={{ background: TH.bgCard, padding: "30px 25px", borderRadius: "35px 35px 25px 25px", width: "100%", maxWidth: 480, border: `1px solid ${TH.border}` }}>
+  <div className="animate-fade notranslate" translate="no" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 2000, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 10, backdropFilter: "blur(8px)" }}>
+    <div className="animate-slide notranslate" translate="no" style={{ background: TH.bgCard, padding: "30px 25px", borderRadius: "35px 35px 25px 25px", width: "100%", maxWidth: 480, border: `1px solid ${TH.border}`, maxHeight: "90vh", overflowY: "auto" }}>
         <div style={{ display: "flex", background: TH.bgInner, padding: 6, borderRadius: 16, marginBottom: 20 }}>
-          <button onClick={()=>setType("expense")} style={{ flex: 1, padding: 12, borderRadius: 12, border: "none", background: type==="expense"?"#ef4444":"transparent", color: type==="expense"?"#fff":TH.textMid, fontWeight: 800, fontSize:14 }}>Expense</button>
-          <button onClick={()=>setType("income")} style={{ flex: 1, padding: 12, borderRadius: 12, border: "none", background: type==="income"?"#10b981":"transparent", color: type==="income"?"#fff":TH.textMid, fontWeight: 800, fontSize:14 }}>Income</button>
+          <button onClick={() => { setType("expense"); setF({...f, amount: "", category: "food"}); }} style={{ flex: 1, padding: 12, borderRadius: 12, border: "none", background: type==="expense"?"#ef4444":"transparent", color: type==="expense"?"#fff":TH.textMid, fontWeight: 800, fontSize:14 }}>Expense</button>
+          <button onClick={() => { setType("income"); setF({...f, amount: "", category: "freelance"}); }} style={{ flex: 1, padding: 12, borderRadius: 12, border: "none", background: type==="income"?"#10b981":"transparent", color: type==="income"?"#fff":TH.textMid, fontWeight: 800, fontSize:14 }}>Income</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20, maxHeight: 180, overflowY: "auto", padding: 5 }}>
           {getCategories(type).map(c => (<button key={c.id} onClick={()=>setF({...f, category:c.id})} style={{ padding: 12, borderRadius: 16, border: `2px solid ${f.category===c.id?c.color:TH.border}`, background: f.category===c.id?`${c.color}15`:TH.bgInner, color: TH.text, fontSize: 12, fontWeight: 700 }}>{c.icon}<br/><span style={{marginTop:4, display:"inline-block"}}>{c.label[lang] || c.label['en']}</span></button>))}
@@ -898,27 +961,41 @@ function TxModal({ data, saveTx, deleteTx, onClose, TH, editData, getCategories,
           <select value={f.walletId} onChange={e=>setF({...f, walletId:e.target.value})} style={{ flex:1, padding:14, borderRadius:14, background:TH.bgInner, border:"none", color:TH.text, fontWeight:700, outline:"none", fontSize:14 }}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}</select>
           <input type="date" value={f.date} onChange={e=>setF({...f, date:e.target.value})} style={{ flex:1, padding:14, borderRadius:14, background:TH.bgInner, border:"none", color:TH.text, fontWeight:700, outline:"none", fontSize:14 }} />
         </div>
-        <input type="number" placeholder="0" value={f.amount} onChange={e=>setF({...f, amount:e.target.value})} style={{ width: "100%", padding: 20, borderRadius: 20, background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.primary, fontSize: 40, fontWeight: 800, textAlign: "center", marginBottom: 15, outline: "none" }}/>
-        <input type="text" placeholder={lang==='bn'?'নোট (ঐচ্ছিক)...':'Note (Optional)...'} value={f.note} onChange={e=>setF({...f, note:e.target.value})} style={{ width: "100%", padding: 16, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, marginBottom: 15, outline: "none", fontWeight: 600, fontSize:14 }}/>
+        <input type="number" placeholder="0" value={f.amount} onChange={e=>setF({...f, amount:e.target.value})} style={{ width: "100%", padding: 20, borderRadius: 20, background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.primary, fontSize: 40, fontWeight: 800, textAlign: "center", marginBottom: 15, outline: "none", position: "relative", zIndex: 10 }} />
+<input type="text" placeholder={lang==='bn'?'নোট (ঐচ্ছিক)':'Note (Optional)'} value={f.note} onChange={e=>setF({...f, note:e.target.value})} translate="no" spellCheck="false" style={{ width: "100%", padding: 16, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, marginBottom: 15, outline: "none", fontWeight: 600, fontSize:14 }} />
         
+        <div style={{ display: "flex", alignItems: "center", background: TH.bgInner, borderRadius: 16, padding: "0 16px", marginBottom: 15 }}>
+           <Hash size={18} color={TH.textMid} />
+           <input type="text" placeholder={lang==='bn'?'# ট্যাগ (কমা দিয়ে লিখুন)':'# Tags (comma separated)'} value={tagInput} onChange={e=>setTagInput(e.target.value)} style={{ width: "100%", padding: 16, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, marginBottom: 15, outline: "none", fontWeight: 600, fontSize:14 }}/>
+        </div>
+
+        
+
         {!editData && (
-          <label style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20, fontWeight:700, fontSize:13, color:TH.textMid, cursor:"pointer", padding:"10px 14px", background:TH.bgInner, borderRadius:14 }}>
-            <input type="checkbox" checked={isRecurring} onChange={e=>setIsRecurring(e.target.checked)} style={{width:18, height:18, accentColor:TH.primary}}/>
-            {lang==='bn'?'প্রতি মাসে স্বয়ংক্রিয়ভাবে যোগ করুন':'Auto-add every month'}
-          </label>
+          <div style={{ display:"flex", flexDirection:"column", gap: 10, marginBottom:20 }}>
+             <label style={{ display:"flex", alignItems:"center", gap:10, fontWeight:700, fontSize:13, color:TH.textMid, cursor:"pointer", padding:"10px 14px", background:TH.bgInner, borderRadius:14 }}>
+               <input type="checkbox" checked={isRecurring} onChange={e=>setIsRecurring(e.target.checked)} style={{width:18, height:18, accentColor:TH.primary}}/>
+               {lang==='bn'?'প্রতি মাসে স্বয়ংক্রিয়ভাবে যোগ করুন':'Auto-add every month'}
+             </label>
+             <label style={{ display:"flex", alignItems:"center", gap:10, fontWeight:700, fontSize:13, color:TH.textMid, cursor:"pointer", padding:"10px 14px", background:TH.bgInner, borderRadius:14, border: saveAsTemplate ? `1px solid ${TH.primary}` : 'none' }}>
+               <input type="checkbox" checked={saveAsTemplate} onChange={e=>setSaveAsTemplate(e.target.checked)} style={{width:18, height:18, accentColor:TH.primary}}/>
+               {lang==='bn'?'কুইক টেমপ্লেট হিসেবে সেভ করুন':'Save as Quick Add Template'}
+             </label>
+          </div>
         )}
         
-        {/* 🔥 Added Delete Option in Edit Mode */}
         <div style={{ display: "flex", gap: 10 }}>
           {editData && (
             <button onClick={() => { deleteTx(editData); onClose(); }} style={{ padding: 18, borderRadius: 16, background: "rgba(239,68,68,0.1)", color: "#ef4444", fontWeight: 800, border: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Trash2 size={20}/>
             </button>
           )}
-          <button onClick={() => { if(saveTx({...f, type, amount: Number(f.amount), id: editData?.id || genId()}, editData, isRecurring)) onClose(); }} style={{ flex: 1, padding: 18, borderRadius: 16, background: TH.primary, color: "#000", fontWeight: 800, border: "none", fontSize: 16 }}>{lang==='bn'?'সেভ করুন':'Save'}</button>
+          <button disabled={uploading} onClick={handleFinalSave} style={{ flex: 1, padding: 18, borderRadius: 16, background: TH.primary, color: "#000", fontWeight: 800, border: "none", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {uploading ? <Loader2 size={20} className="animate-spin"/> : (lang==='bn'?'সেভ করুন':'Save')}
+          </button>
         </div>
 
-        <button onClick={onClose} style={{ width: "100%", padding: 14, background: "none", border: "none", color: TH.textMid, fontWeight: 700, marginTop:5, fontSize:14 }}>{lang==='bn'?'বাতিল':'Cancel'}</button>
+        <button disabled={uploading} onClick={onClose} style={{ width: "100%", padding: 14, background: "none", border: "none", color: TH.textMid, fontWeight: 700, marginTop:5, fontSize:14 }}>{lang==='bn'?'বাতিল':'Cancel'}</button>
       </div>
     </div>
   );
