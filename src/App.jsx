@@ -129,7 +129,7 @@ export default function App() {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowInstallPrompt(true); // Show custom install banner
+      setShowInstallPrompt(true);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -193,7 +193,7 @@ export default function App() {
         const nextMonth = new Date(r.nextDate); nextMonth.setMonth(nextMonth.getMonth() + 1); return { ...r, nextDate: nextMonth.toISOString().split("T")[0] };
       } return r;
     });
-    if (updated) { setData({ ...data, txs: newTxs, wallets: newWs, recurring: newRec }); showToast(settings.lang==='bn'?"স্বয়ংক্রিয় পেমেন্ট যোগ হয়েছে!":"Auto-payments added!", "success"); }
+    if (updated) { setData({ ...data, txs: newTxs, wallets: newWs, recurring: newRec }); showToast(settings.lang==='bn'?"স্বয়ংক্রিয় পেমেন্ট যোগ হয়েছে!":"Auto-payments added!", "success"); }
   }, [isDbLoaded]);
 
   const isDark = settings.theme === "dark";
@@ -232,7 +232,7 @@ export default function App() {
   const deleteTx = tx => {
     setConfirmDialog({ show: true, msg: settings.lang==='bn'?"মুছতে চান?":"Delete transaction?", onConfirm: () => {
         const ws = data.wallets.map(w => w.id === tx.walletId ? { ...w, balance: tx.type === "income" ? w.balance - tx.amount : w.balance + tx.amount } : w);
-        setData({ ...data, txs: data.txs.filter(x => x.id !== tx.id), wallets: ws }); showToast(settings.lang==='bn'?"মুছে ফেলা হয়েছে":"Deleted", "success"); }
+        setData({ ...data, txs: data.txs.filter(x => x.id !== tx.id), wallets: ws }); showToast(settings.lang==='bn'?"মুছে ফেলা হয়েছে":"Deleted", "success"); }
     });
   };
 
@@ -318,7 +318,7 @@ export default function App() {
         </div>
       </div>
 
-      {modal === "tx" && <TxModal data={data} saveTx={saveTx} onClose={()=>setModal(null)} TH={TH} editData={editTxData} getCategories={getCategories} lang={settings.lang} showToast={showToast} />}
+      {modal === "tx" && <TxModal data={data} saveTx={saveTx} deleteTx={deleteTx} onClose={()=>setModal(null)} TH={TH} editData={editTxData} getCategories={getCategories} lang={settings.lang} showToast={showToast} />}
       {modal === "settings" && <SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={()=>setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR} setConfirmDialog={setConfirmDialog} onLogout={handleLogout} />}
     </div>
   );
@@ -410,15 +410,15 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
 
         <div style={{ display: "flex", gap: 15, marginTop: 35 }}>
           <div style={{ flex: 1 }}>
-             <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingUp size={14} color="#10b981"/> {settings.lang==='bn'?'আয়':'INCOME'}</p>
+             <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingUp size={14} color="#10b981"/> {settings.lang==='bn'?'আয়':'INCOME'}</p>
              <p style={{ fontSize: 16, fontWeight: 700, color: "#10b981", marginTop: 4 }}>{fmt(monthlyInc)}</p>
           </div>
           <div style={{ flex: 1, borderLeft: `1px solid ${TH.border}`, paddingLeft: 15 }}>
-             <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingDown size={14} color="#ef4444"/> {settings.lang==='bn'?'ব্যয়':'EXPENSE'}</p>
+             <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingDown size={14} color="#ef4444"/> {settings.lang==='bn'?'ব্যয়':'EXPENSE'}</p>
              <p style={{ fontSize: 16, fontWeight: 700, color: "#ef4444", marginTop: 4 }}>{fmt(monthlyExp)}</p>
           </div>
           <div style={{ flex: 1, borderLeft: `1px solid ${TH.border}`, paddingLeft: 15 }}>
-             <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><Activity size={14} color="#3b82f6"/> {settings.lang==='bn'?'সঞ্চয়':'SAVINGS'}</p>
+             <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><Activity size={14} color="#3b82f6"/> {settings.lang==='bn'?'সঞ্চয়':'SAVINGS'}</p>
              <p style={{ fontSize: 16, fontWeight: 700, color: "#3b82f6", marginTop: 4 }}>{fmt(monthlySav)}</p>
           </div>
         </div>
@@ -428,7 +428,7 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
         <button onClick={exportCSV} style={{ flex:1, padding:"14px", borderRadius:18, background:TH.bgCard, color:TH.text, fontWeight:700, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid rgba(16,185,129,0.3)`, boxShadow: "0 4px 15px rgba(16,185,129,0.05)" }}><Download size={18} color="#10b981"/> CSV</button>
         <button onClick={exportPDF} style={{ flex:1, padding:"14px", borderRadius:18, background:TH.bgCard, color:TH.text, fontWeight:700, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid rgba(239,68,68,0.3)`, boxShadow: "0 4px 15px rgba(239,68,68,0.05)" }}><FileText size={18} color="#ef4444"/> PDF</button>
         <select value={dateRange} onChange={e=>setDateRange(e.target.value)} style={{ padding: "0 14px", borderRadius: 18, background: TH.bgCard, border:`1px solid ${TH.border}`, color: TH.textMid, fontWeight: 700, fontSize:14, outline:"none", flex:1.2 }}>
-          <option value="all">{settings.lang==='bn'?'সব সময়':'All Time'}</option>
+          <option value="all">{settings.lang==='bn'?'সব সময়':'All Time'}</option>
           <option value="month">{settings.lang==='bn'?'এই মাস':'This Month'}</option>
           <option value="week">{settings.lang==='bn'?'গত ৭ দিন':'Last 7 Days'}</option>
         </select>
@@ -459,6 +459,8 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <p style={{ fontWeight: 800, fontSize: 16, color: tx.type === "income" ? "#10b981" : TH.text }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
+                {/* 🔥 Added Delete Icon directly in the list! */}
+                <button onClick={(e) => { e.stopPropagation(); deleteTx(tx); }} style={{ background: "none", border: "none", color: "#ef4444", padding: "4px 0 4px 8px" }}><Trash2 size={18}/></button>
               </div>
             </div>
           );
@@ -490,17 +492,17 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
   };
 
   const deleteWalletSafe = (w) => {
-    if(data.wallets.length === 1) return showToast(settings.lang==='bn'?"কমপক্ষে ১টি ওয়ালেট থাকতে হবে":"Need 1 wallet minimum", "error");
+    if(data.wallets.length === 1) return showToast(settings.lang==='bn'?"কমপক্ষে ১টি ওয়ালেট থাকতে হবে":"Need 1 wallet minimum", "error");
     const hasTxs = data.txs.some(t => t.walletId === w.id);
     const hasDebts = data.debts.some(d => d.sourceId === w.id);
-    if(hasTxs || hasDebts) return showToast(settings.lang==='bn'?"এই ওয়ালেটে লেনদেন বা ধার আছে!":"Wallet has active logs!", "error");
-    setConfirmDialog({ show: true, msg: settings.lang==='bn'?"ওয়ালেটটি মুছতে চান?":"Delete Wallet?", onConfirm: () => { setData({...data, wallets: data.wallets.filter(x=>x.id!==w.id)}); showToast("Deleted", "success"); } });
+    if(hasTxs || hasDebts) return showToast(settings.lang==='bn'?"এই ওয়ালেটে লেনদেন বা ধার আছে!":"Wallet has active logs!", "error");
+    setConfirmDialog({ show: true, msg: settings.lang==='bn'?"ওয়ালেটটি মুছতে চান?":"Delete Wallet?", onConfirm: () => { setData({...data, wallets: data.wallets.filter(x=>x.id!==w.id)}); showToast("Deleted", "success"); } });
   };
 
   const handleTransfer = () => {
     const amt = Number(transferForm.amount);
     if (!transferForm.from || !transferForm.to || !amt) return showToast(settings.lang==='bn'?"সব তথ্য দিন":"Enter info", "error");
-    if (transferForm.from === transferForm.to) return showToast(settings.lang==='bn'?"একই ওয়ালেট সিলেক্ট করা হয়েছে":"Same wallet selected", "error");
+    if (transferForm.from === transferForm.to) return showToast(settings.lang==='bn'?"একই ওয়ালেট সিলেক্ট করা হয়েছে":"Same wallet selected", "error");
     let ws = [...data.wallets]; const fromIdx = ws.findIndex(w => w.id === transferForm.from); const toIdx = ws.findIndex(w => w.id === transferForm.to);
     if (fromIdx === -1 || toIdx === -1) return showToast("Wallet error", "error");
     if (ws[fromIdx].balance < amt) return showToast(settings.lang==='bn'?"টাকা নেই":"Insufficient Balance", "error");
@@ -515,7 +517,7 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <h3 style={{ fontWeight: 700, fontSize:16, color: TH.textMid }}>{settings.lang==='bn'?'ওয়ালেট':'WALLETS'}</h3>
+        <h3 style={{ fontWeight: 700, fontSize:16, color: TH.textMid }}>{settings.lang==='bn'?'ওয়ালেট':'WALLETS'}</h3>
         <div style={{ display: "flex", gap: 8 }}>
            <button onClick={()=>setTransferForm({...transferForm, show:!transferForm.show})} style={{ padding: "8px 14px", borderRadius: 12, background: TH.bgCard, color: TH.text, border: `1px solid ${TH.border}`, fontWeight: 700, fontSize:13 }}><ArrowRightLeft size={14} style={{marginBottom:-2}}/> Transfer</button>
            <button onClick={()=>setWalletForm({...walletForm, show:true})} style={{ padding: "8px 14px", borderRadius: 12, background: TH.primary, color: "#000", border: "none", fontWeight: 800, fontSize:13 }}>+ Add</button>
@@ -601,7 +603,7 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <p style={{ fontWeight: 800, fontSize:16, color: TH.text }}>{fmt(d.amount)}</p>
-            <button onClick={()=>{ setConfirmDialog({ show: true, msg: settings.lang==='bn'?"হিসাব ক্লিয়ার করবেন?":"Settle this debt?", onConfirm: () => { const ws = data.wallets.map(w => w.id === d.sourceId ? { ...w, balance: d.type==='lend'? w.balance+d.amount : w.balance-d.amount } : w); setData({...data, wallets: ws, debts: data.debts.filter(x=>x.id!==d.id)}); showToast(settings.lang==='bn'?"ক্লিয়ার!":"Settled!", "success"); }}); }} style={{ padding: "8px 12px", background: TH.bgInner, color: TH.text, borderRadius: 10, border: `1px solid ${TH.border}`, fontWeight: 700, fontSize: 12 }}>Settle</button>
+            <button onClick={()=>{ setConfirmDialog({ show: true, msg: settings.lang==='bn'?"হিসাব ক্লিয়ার করবেন?":"Settle this debt?", onConfirm: () => { const ws = data.wallets.map(w => w.id === d.sourceId ? { ...w, balance: d.type==='lend'? w.balance+d.amount : w.balance-d.amount } : w); setData({...data, wallets: ws, debts: data.debts.filter(x=>x.id!==d.id)}); showToast(settings.lang==='bn'?"ক্লিয়ার!":"Settled!", "success"); }}); }} style={{ padding: "8px 12px", background: TH.bgInner, color: TH.text, borderRadius: 10, border: `1px solid ${TH.border}`, fontWeight: 700, fontSize: 12 }}>Settle</button>
           </div>
         </div>
       ))}
@@ -629,7 +631,7 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
     if(wIdx === -1 || ws[wIdx].balance < amt) return showToast(settings.lang==='bn'?"ব্যালেন্স নেই!":"Insufficient Balance", "error");
     ws[wIdx].balance -= amt; const newGoals = data.goals.map(g => g.id === goalId ? { ...g, saved: g.saved + amt } : g);
     const tx = { id: genId(), type:'expense', date: TODAY(), amount: amt, category:'other_ex', walletId: addCashWallet, note: `${settings.lang==='bn'?'লক্ষ্য:':'Goal:'} ${data.goals.find(x=>x.id===goalId).name}` };
-    setData({ ...data, wallets: ws, goals: newGoals, txs: [tx, ...data.txs] }); setAddCashId(null); setAddCashAmt(""); showToast(settings.lang==='bn'?"টাকা এড হয়েছে":"Added", "success");
+    setData({ ...data, wallets: ws, goals: newGoals, txs: [tx, ...data.txs] }); setAddCashId(null); setAddCashAmt(""); showToast(settings.lang==='bn'?"টাকা এড হয়েছে":"Added", "success");
   };
 
   return (
@@ -641,19 +643,68 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
       </div>
       
       {subTab === "vault" && (
-        <div className="animate-scale" style={{ padding: 40, background: TH.bgCard, borderRadius: 32, textAlign: "center", border: `1px solid ${TH.border}` }}>
-          <Landmark size={36} style={{margin:"0 auto 15px", color:TH.primary}}/>
-          <p style={{ fontWeight: 700, color: TH.textMid, letterSpacing:1, fontSize:12 }}>SAVINGS VAULT</p>
-          <h2 style={{ fontSize: 42, fontWeight: 800, margin:"10px 0 25px", color: TH.text }}>{fmt(data.savings.balance)}</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <select value={vaultWallet} onChange={e=>setVaultWallet(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 700, outline:"none", fontSize:14 }}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
-            <input type="number" placeholder="Amount" value={saveAmt} onChange={e=>setSaveAmt(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, textAlign:"center", outline:"none", fontWeight:700, fontSize:16 }} />
-            <input type="text" placeholder="Note (Optional)" value={saveNote} onChange={e=>setSaveNote(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, textAlign:"center", outline:"none", fontWeight:600, fontSize:14 }} />
-            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-              <button onClick={()=>handleVault('deposit')} style={{ flex: 1, padding: 14, background: "#10b981", color: "#fff", border: "none", borderRadius: 16, fontWeight: 800, fontSize:14 }}>Deposit</button>
-              <button onClick={()=>handleVault('withdraw')} style={{ flex: 1, padding: 14, background: TH.bgInner, color: TH.text, border: `1px solid ${TH.border}`, borderRadius: 16, fontWeight: 800, fontSize:14 }}>Withdraw</button>
+        <div className="animate-slide" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="animate-scale" style={{ padding: 40, background: TH.bgCard, borderRadius: 32, textAlign: "center", border: `1px solid ${TH.border}` }}>
+            <Landmark size={36} style={{margin:"0 auto 15px", color:TH.primary}}/>
+            <p style={{ fontWeight: 700, color: TH.textMid, letterSpacing:1, fontSize:12 }}>SAVINGS VAULT</p>
+            <h2 style={{ fontSize: 42, fontWeight: 800, margin:"10px 0 25px", color: TH.text }}>{fmt(data.savings.balance)}</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <select value={vaultWallet} onChange={e=>setVaultWallet(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 700, outline:"none", fontSize:14 }}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
+              <input type="number" placeholder="Amount" value={saveAmt} onChange={e=>setSaveAmt(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, textAlign:"center", outline:"none", fontWeight:700, fontSize:16 }} />
+              <input type="text" placeholder="Note (Optional)" value={saveNote} onChange={e=>setSaveNote(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, textAlign:"center", outline:"none", fontWeight:600, fontSize:14 }} />
+              <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                <button onClick={()=>handleVault('deposit')} style={{ flex: 1, padding: 14, background: "#10b981", color: "#fff", border: "none", borderRadius: 16, fontWeight: 800, fontSize:14 }}>Deposit</button>
+                <button onClick={()=>handleVault('withdraw')} style={{ flex: 1, padding: 14, background: TH.bgInner, color: TH.text, border: `1px solid ${TH.border}`, borderRadius: 16, fontWeight: 800, fontSize:14 }}>Withdraw</button>
+              </div>
             </div>
           </div>
+
+          {/* 🔥 ADDED SAVINGS RECENT HISTORY WITH 100% SAFE DELETE OPTION */}
+          {(data.savings.history && data.savings.history.length > 0) && (
+            <div style={{ marginTop: 10 }}>
+              <p style={{ fontWeight: 700, marginBottom: 12, color: TH.textMid, fontSize: 13, textTransform: "uppercase" }}>{settings.lang==='bn'?'সাম্প্রতিক হিস্ট্রি':'Recent History'}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {data.savings.history.map(sv => (
+                  <div key={sv.id} className="tx-card" style={{ padding: "16px 20px", background: TH.bgCard, borderRadius: 20, border: `1px solid ${TH.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ textAlign: "left" }}>
+                       <p style={{ fontWeight: 700, fontSize: 15, color: TH.text }}>{sv.note}</p>
+                       <p style={{ fontSize: 12, color: TH.textMid, fontWeight: 500 }}>{formatDate(sv.date)}</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                       <p style={{ fontWeight: 800, fontSize: 16, color: sv.type === 'deposit' ? "#10b981" : "#ef4444" }}>{sv.type === 'deposit' ? "+" : "-"}{fmt(sv.amount)}</p>
+                       <button onClick={() => {
+                          setConfirmDialog({ show: true, msg: settings.lang==='bn'?"এই হিস্ট্রি মুছবেন?":"Delete this record?", onConfirm: () => {
+                             // 1. Revert Vault Balance
+                             let svNew = { ...data.savings };
+                             svNew.balance = sv.type === 'deposit' ? svNew.balance - sv.amount : svNew.balance + sv.amount;
+                             svNew.history = svNew.history.filter(x => x.id !== sv.id);
+                             
+                             // 2. Find and remove matching transaction from Home AND refund Wallet
+                             const matchingTx = data.txs.find(t => t.date === sv.date && t.amount === sv.amount && t.note === sv.note);
+                             let newWs = [...data.wallets];
+                             let newTxs = [...data.txs];
+                             
+                             if (matchingTx) {
+                                 const wIdx = newWs.findIndex(w => w.id === matchingTx.walletId);
+                                 if (wIdx > -1) {
+                                     newWs[wIdx].balance += (matchingTx.type === 'expense' ? matchingTx.amount : -matchingTx.amount);
+                                 }
+                                 newTxs = newTxs.filter(t => t.id !== matchingTx.id);
+                             } else if (newWs[0]) {
+                                 // Fallback if transaction was manually deleted earlier
+                                 newWs[0].balance += (sv.type === 'deposit' ? sv.amount : -sv.amount);
+                             }
+                             
+                             setData({ ...data, savings: svNew, wallets: newWs, txs: newTxs });
+                             showToast(settings.lang==='bn'?"মুছে ফেলা হয়েছে":"Deleted", "success");
+                          }});
+                       }} style={{ background: "none", border: "none", color: "#ef4444", padding: "4px 0 4px 8px" }}><Trash2 size={18}/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       
@@ -786,14 +837,14 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
                   <p style={{fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalAssets)}</p>
                </div>
                <div style={{ flex:1, padding:20, background:TH.bgCard, borderRadius:24, border:`1px solid rgba(239,68,68,0.3)` }}>
-                  <p style={{fontSize:12, fontWeight:700, color:"#ef4444"}}>{lang==='bn'?'মোট দায়':'Total Liabilities'}</p>
+                  <p style={{fontSize:12, fontWeight:700, color:"#ef4444"}}>{lang==='bn'?'মোট দায়':'Total Liabilities'}</p>
                   <p style={{fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalLiabilities)}</p>
                </div>
             </div>
             <div style={{ padding:35, background:TH.bgCard, borderRadius:28, textAlign:"center", border:`1px solid ${TH.border}`, position:"relative", overflow:"hidden" }}>
-               <p style={{fontSize:13, fontWeight:700, color:TH.textMid}}>{lang==='bn'?'নেট ওয়ার্থ (আসল সম্পদ)':'Net Worth'}</p>
+               <p style={{fontSize:13, fontWeight:700, color:TH.textMid}}>{lang==='bn'?'নেট ওয়ার্থ (আসল সম্পদ)':'Net Worth'}</p>
                <h2 style={{fontSize:40, fontWeight:800, margin:"10px 0", color: netWorth >= 0 ? "#10b981" : "#ef4444"}}>{fmt(netWorth)}</h2>
-               <p style={{fontSize:11, fontWeight:600, color:TH.textMid}}>{lang==='bn'?'সম্পদ - দায় = আসল মূল্য':'Assets - Liabilities'}</p>
+               <p style={{fontSize:11, fontWeight:600, color:TH.textMid}}>{lang==='bn'?'সম্পদ - দায় = আসল মূল্য':'Assets - Liabilities'}</p>
             </div>
          </div>
       ) : (
@@ -813,8 +864,8 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
                 <XAxis dataKey="name" stroke={TH.textMid} fontSize={11} tickLine={false} axisLine={false}/>
                 <Tooltip cursor={{fill: TH.bgInner}} formatter={v=>fmt(v)} contentStyle={{borderRadius: 16, border:`1px solid ${TH.border}`, background: TH.bgCard, fontWeight:700, color:TH.text}}/>
                 <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{fontSize:12, fontWeight:600}}/>
-                <Bar dataKey="income" fill="#10b981" radius={[4,4,0,0]} name={lang==='bn'?'আয়':'Income'} barSize={12} />
-                <Bar dataKey="expense" fill="#ef4444" radius={[4,4,0,0]} name={lang==='bn'?'ব্যয়':'Expense'} barSize={12} />
+                <Bar dataKey="income" fill="#10b981" radius={[4,4,0,0]} name={lang==='bn'?'আয়':'Income'} barSize={12} />
+                <Bar dataKey="expense" fill="#ef4444" radius={[4,4,0,0]} name={lang==='bn'?'ব্যয়':'Expense'} barSize={12} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -824,7 +875,7 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
   );
 }
 
-function TxModal({ data, saveTx, onClose, TH, editData, getCategories, lang }) {
+function TxModal({ data, saveTx, deleteTx, onClose, TH, editData, getCategories, lang }) {
   const [type, setType] = useState(editData?.type || "expense"); 
   const [f, setF] = useState(editData || { date: TODAY(), category: "food", amount: "", note: "", walletId: "w1" }); 
   const [isRecurring, setIsRecurring] = useState(false); 
@@ -849,11 +900,20 @@ function TxModal({ data, saveTx, onClose, TH, editData, getCategories, lang }) {
         {!editData && (
           <label style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20, fontWeight:700, fontSize:13, color:TH.textMid, cursor:"pointer", padding:"10px 14px", background:TH.bgInner, borderRadius:14 }}>
             <input type="checkbox" checked={isRecurring} onChange={e=>setIsRecurring(e.target.checked)} style={{width:18, height:18, accentColor:TH.primary}}/>
-            {lang==='bn'?'প্রতি মাসে স্বয়ংক্রিয়ভাবে যোগ করুন':'Auto-add every month'}
+            {lang==='bn'?'প্রতি মাসে স্বয়ংক্রিয়ভাবে যোগ করুন':'Auto-add every month'}
           </label>
         )}
         
-        <button onClick={() => { if(saveTx({...f, type, amount: Number(f.amount), id: editData?.id || genId()}, editData, isRecurring)) onClose(); }} style={{ width: "100%", padding: 18, borderRadius: 16, background: TH.primary, color: "#000", fontWeight: 800, border: "none", fontSize: 16 }}>{lang==='bn'?'সেভ করুন':'Save'}</button>
+        {/* 🔥 Added Delete Option in Edit Mode */}
+        <div style={{ display: "flex", gap: 10 }}>
+          {editData && (
+            <button onClick={() => { deleteTx(editData); onClose(); }} style={{ padding: 18, borderRadius: 16, background: "rgba(239,68,68,0.1)", color: "#ef4444", fontWeight: 800, border: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Trash2 size={20}/>
+            </button>
+          )}
+          <button onClick={() => { if(saveTx({...f, type, amount: Number(f.amount), id: editData?.id || genId()}, editData, isRecurring)) onClose(); }} style={{ flex: 1, padding: 18, borderRadius: 16, background: TH.primary, color: "#000", fontWeight: 800, border: "none", fontSize: 16 }}>{lang==='bn'?'সেভ করুন':'Save'}</button>
+        </div>
+
         <button onClick={onClose} style={{ width: "100%", padding: 14, background: "none", border: "none", color: TH.textMid, fontWeight: 700, marginTop:5, fontSize:14 }}>{lang==='bn'?'বাতিল':'Cancel'}</button>
       </div>
     </div>
@@ -935,7 +995,7 @@ function SettingsModal({ settings, setSettings, data, setData, onClose, TH, show
           <p style={{ fontWeight:700, marginBottom:12, color:TH.textMid, fontSize:12, textTransform:"uppercase" }}>{settings.lang==='bn'?'নতুন ক্যাটাগরি':'Custom Category'}</p>
           <div style={{ display:"flex", gap:10, marginBottom:12 }}>
             <select value={newCat.type} onChange={e=>setNewCat({...newCat, type:e.target.value})} style={{ flex: 1, padding:14, borderRadius:14, background:TH.bgCard, color:TH.text, border:"none", outline:"none", fontWeight:600, fontSize:13 }}>
-              <option value="expense">{settings.lang==='bn'?'ব্যয়':'Expense'}</option><option value="income">{settings.lang==='bn'?'আয়':'Income'}</option>
+              <option value="expense">{settings.lang==='bn'?'ব্যয়':'Expense'}</option><option value="income">{settings.lang==='bn'?'আয়':'Income'}</option>
             </select>
             <input type="text" placeholder="🍔" value={newCat.icon} onChange={e=>setNewCat({...newCat, icon:e.target.value})} style={{ width:55, padding:14, borderRadius:14, background:TH.bgCard, color:TH.text, border:"none", textAlign:"center", outline:"none" }} />
             <input type="color" value={newCat.color} onChange={e=>setNewCat({...newCat, color:e.target.value})} style={{ width:50, height:48, padding:0, border:"none", borderRadius:14, background:"none", cursor:"pointer" }} />
