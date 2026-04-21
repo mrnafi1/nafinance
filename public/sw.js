@@ -1,7 +1,10 @@
+const CACHE_NAME = 'nafinance-v1';
+const assets = ['/'];
+
 self.addEventListener('install', (e) => {
-  console.log('Service Worker: Installed');
+  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(assets)));
 });
 
 self.addEventListener('fetch', (e) => {
-  // অ্যাপটি অফলাইনেও কাজ করার জন্য এটি প্রয়োজন
+  e.respondWith(caches.match(e.request).then((res) => res || fetch(e.request)));
 });
