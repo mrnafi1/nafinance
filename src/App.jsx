@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { BarChart, Bar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, Legend } from "recharts";
-import { Plus, Trash2, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut } from "lucide-react";
+import { Plus, Trash2, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut, DownloadCloud } from "lucide-react";
 
 // 🔥 Firebase Imports
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
 const AUTHOR = "Mushfiqur Rahman Nafi";
 const APP_NAME = "NaFinance";
 
-// 🚀 Firebase Configuration (Your specific credentials)
+// 🚀 Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDlW5Dbs5NTeNtJpsdIYPv5bgva0O2q6jg",
   authDomain: "nafinance-7e236.firebaseapp.com",
@@ -35,11 +35,13 @@ const FONT_STYLE = `
   input[type=number] { -moz-appearance: textfield; }
   
   @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideDownFade { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes pulseGlow { 0% { box-shadow: 0 0 15px rgba(251,191,36,0.3); } 100% { box-shadow: 0 0 30px rgba(251,191,36,0.6); } }
   
   .animate-slide { animation: slideUpFade 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+  .animate-slide-down { animation: slideDownFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
   .animate-scale { animation: scaleIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
   .animate-fade { animation: fadeIn 0.2s ease forwards; }
   
@@ -109,6 +111,10 @@ export default function App() {
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // 📱 PWA Install States
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
   const [tab, setTab] = useState("home");
   const [modal, setModal] = useState(null);
   const [editTxData, setEditTxData] = useState(null); 
@@ -117,6 +123,28 @@ export default function App() {
   const appRef = useRef(null);
 
   const showToast = (msg, type="error") => { setToastMsg({ msg, type }); setTimeout(() => setToastMsg(null), 2500); };
+
+  // 🔥 Listen for App Install Event (PWA)
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true); // Show custom install banner
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setShowInstallPrompt(false);
+      }
+    }
+  };
 
   // 🔥 Listen for Google Auth State & Load Firestore Data
   useEffect(() => {
@@ -132,10 +160,9 @@ export default function App() {
             if (dbData.settings) {
               const mergedSet = { ...DEFAULT_SETTINGS, ...dbData.settings };
               setSettings(mergedSet);
-              setIsAuthenticated(!mergedSet.pinLock); // If no pin, auto-authenticate
+              setIsAuthenticated(!mergedSet.pinLock);
             }
           } else {
-            // New user: Set default values
             setIsAuthenticated(true);
           }
         } catch(err) { console.error("Firebase Read Error:", err); }
@@ -148,7 +175,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 🔥 Auto Save to Firestore when data/settings change
+  // 🔥 Auto Save to Firestore
   useEffect(() => {
     if (firebaseUser && isDbLoaded) {
       setDoc(doc(db, "users", firebaseUser.uid), { data, settings }).catch(e => console.error("Firebase Sync Error:", e));
@@ -167,7 +194,7 @@ export default function App() {
       } return r;
     });
     if (updated) { setData({ ...data, txs: newTxs, wallets: newWs, recurring: newRec }); showToast(settings.lang==='bn'?"স্বয়ংক্রিয় পেমেন্ট যোগ হয়েছে!":"Auto-payments added!", "success"); }
-  }, [isDbLoaded]); // Runs once when DB loads
+  }, [isDbLoaded]);
 
   const isDark = settings.theme === "dark";
   const TH = isDark 
@@ -209,18 +236,33 @@ export default function App() {
     });
   };
 
-  // 🛡️ Pre-app Views
   if (authLoading) return <LoadingScreen TH={TH} />;
   if (!firebaseUser) return <AuthScreen TH={TH} onLogin={handleLogin} />;
   if (!isAuthenticated && settings.pinLock) return <PinScreen settings={settings} setSettings={setSettings} onSuccess={() => setIsAuthenticated(true)} TH={TH} showToast={showToast} onLogout={handleLogout} />;
 
-  // 🚀 Main App UI
   return (
     <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, position: "relative" }}>
       <style>{FONT_STYLE}</style>
       
+      {/* 🚀 App Install Prompt (PWA Banner) */}
+      {showInstallPrompt && (
+        <div className="animate-slide-down" style={{ position: "fixed", top: 15, left: "50%", transform: "translateX(-50%)", width: "90%", maxWidth: 440, background: TH.bgCard, padding: "16px 20px", borderRadius: 20, zIndex: 7000, display: "flex", alignItems: "center", justifyContent: "space-between", border: `1px solid ${TH.primary}`, boxShadow: `0 15px 40px rgba(0,0,0,0.6)` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, background: TH.primary, borderRadius: 12, display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontWeight:900, fontSize: 20 }}>N</div>
+            <div>
+              <p style={{ fontWeight: 800, fontSize: 15, color: TH.text, marginBottom: 2 }}>Install NaFinance</p>
+              <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600 }}>Get the full app experience</p>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button onClick={handleInstallApp} style={{ background: TH.primary, color: "#000", border: "none", padding: "10px 18px", borderRadius: 12, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><DownloadCloud size={16}/> Install</button>
+            <button onClick={() => setShowInstallPrompt(false)} style={{ background: "none", border: "none", color: TH.textMid }}><X size={20}/></button>
+          </div>
+        </div>
+      )}
+
       {toastMsg && (
-        <div className="animate-scale" style={{ position: "fixed", top: 30, left: "50%", transform: "translateX(-50%)", background: TH.bgCard, color: TH.text, padding: "14px 24px", borderRadius: 30, boxShadow: `0 10px 30px rgba(0,0,0,0.5)`, zIndex: 5000, display: "flex", alignItems: "center", gap: 12, fontWeight: 700, fontSize: 14, border: `1px solid ${toastMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+        <div className="animate-scale" style={{ position: "fixed", top: showInstallPrompt ? 90 : 30, left: "50%", transform: "translateX(-50%)", background: TH.bgCard, color: TH.text, padding: "14px 24px", borderRadius: 30, boxShadow: `0 10px 30px rgba(0,0,0,0.5)`, zIndex: 5000, display: "flex", alignItems: "center", gap: 12, fontWeight: 700, fontSize: 14, border: `1px solid ${toastMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: toastMsg.type === 'success' ? '#10b981' : '#ef4444', boxShadow: `0 0 10px ${toastMsg.type === 'success' ? '#10b981' : '#ef4444'}` }} /> {toastMsg.msg}
         </div>
       )}
@@ -282,7 +324,7 @@ export default function App() {
   );
 }
 
-// 🛡️ Auth Loading Screen
+// 🛡️ Loading Screen
 function LoadingScreen({ TH }) {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: TH.bg }}>
@@ -410,7 +452,10 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
             <div key={tx.id} className="tx-card" style={{ padding: "18px 20px", background: TH.bgCard, borderRadius: 24, border: `1px solid ${TH.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => { setEditTxData(tx); setModal("tx"); }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div style={{ width: 48, height: 48, borderRadius: 16, background: cat.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{cat.icon}</div>
-                <div><p style={{ fontWeight: 700, fontSize: 16, color: TH.text, marginBottom: 2 }}>{tx.note || cat.label[settings.lang] || cat.label['en']}</p><p style={{ fontSize: 12, color: TH.textMid, fontWeight:500 }}>{formatDate(tx.date)}</p></div>
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: 16, color: TH.text, marginBottom: 2 }}>{tx.note || cat.label[settings.lang] || cat.label['en']}</p>
+                  <p style={{ fontSize: 12, color: TH.textMid, fontWeight:500 }}>{formatDate(tx.date)}</p>
+                </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <p style={{ fontWeight: 800, fontSize: 16, color: tx.type === "income" ? "#10b981" : TH.text }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
@@ -917,7 +962,6 @@ function SettingsModal({ settings, setSettings, data, setData, onClose, TH, show
         <button onClick={onLogout} style={{ width: "100%", padding: 16, background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "none", borderRadius: 16, fontWeight: 800, fontSize:14, marginBottom: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><LogOut size={18}/> Log Out (Google)</button>
         <button onClick={()=>{ setConfirmDialog({show:true, msg:settings.lang==='bn'?"সব ডেটা মুছে যাবে! নিশ্চিত?":"Are you sure to Reset?", onConfirm:()=>{localStorage.clear(); window.location.reload();}}) }} style={{ width: "100%", padding: 16, background: "transparent", color: TH.textMid, border: `1px solid ${TH.border}`, borderRadius: 16, fontWeight: 700, fontSize:14 }}>Factory Reset</button>
         
-        {/* 🚀 Premium Developer Info Card with Email */}
         <div className="animate-scale" style={{ marginTop: 30, padding: 20, background: "linear-gradient(145deg, rgba(251,191,36,0.1), rgba(251,191,36,0.02))", borderRadius: 24, border: `1px solid rgba(251,191,36,0.3)`, display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 55, height: 55, borderRadius: 18, background: TH.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, boxShadow: "0 8px 20px rgba(251,191,36,0.4)" }}>
             👨‍💻

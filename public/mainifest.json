@@ -1,0 +1,15 @@
+{
+  "short_name": "NaFinance",
+  "name": "NaFinance - Premium Wealth Management",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2933/2933116.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0B1121",
+  "background_color": "#0B1121"
+}
