@@ -283,7 +283,11 @@ export default function App() {
       <header className="glass-header" style={{ position: "sticky", top: 0, zIndex: 50, background: isDark ? "rgba(11,17,33,0.8)" : "rgba(243,244,246,0.8)", borderBottom: `1px solid ${TH.border}`, padding: "16px 20px" }}>
         <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 40, height: 40, background: TH.primary, borderRadius: 12, display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontWeight:900, fontSize: 18, boxShadow: `0 5px 15px ${TH.glow}` }}>N</div>
+            {firebaseUser?.photoURL ? (
+              <img src={firebaseUser.photoURL} alt="Profile" style={{ width: 40, height: 40, borderRadius: 12, border: `2px solid ${TH.primary}`, boxShadow: `0 5px 15px ${TH.glow}`, objectFit: "cover" }} />
+            ) : (
+              <div style={{ width: 40, height: 40, background: TH.primary, borderRadius: 12, display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontWeight:900, fontSize: 18, boxShadow: `0 5px 15px ${TH.glow}` }}>{firebaseUser?.displayName?.charAt(0) || "N"}</div>
+            )}
             <span style={{ fontWeight: 800, fontSize: 20, color: TH.primary, letterSpacing: "0.5px" }}>{APP_NAME}</span>
           </div>
           <button onClick={() => setModal("settings")} style={{ padding: 10, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 14, color: TH.textMid }}><Settings size={20}/></button>

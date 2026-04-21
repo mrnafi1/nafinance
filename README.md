@@ -1,30 +1,37 @@
-🌟 About This Season: The "Ultimate Pro Max" Update
-This season, NaFinance has evolved from a basic expense tracker into a full-fledged, offline-first personal finance manager. The focus of this update was strictly on Data Safety, Advanced Planning, and Deep Personalization.
+# 💰 NaFinance — Premium Wealth Management System
 
-Here is what makes this season special:
+![Version](https://img.shields.io/badge/version-2.1.0-gold)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Firebase](https://img.shields.io/badge/firebase-%23039BE5.svg?style=for-the-badge&logo=firebase)
+![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
+![Vercel](https://img.shields.io/badge/vercel-%23000000.svg?style=for-the-badge&logo=vercel&logoColor=white)
 
-🚀 Core New Features:
+**NaFinance** is a high-fidelity, cloud-synced personal finance management application. Designed for individuals who demand precision and security, it offers a seamless way to track net worth, manage assets, and monitor financial goals.
 
-Smart Debt Management: Keep track of who owes you (Lend) or who you owe (Borrow) with exact transaction dates and expected Return Dates.
+[🚀 Explore Live App](https://nafinance.vercel.app)
 
-Visual Budgeting: Set category limits and watch your expenses in real-time with dynamic progress bars. It warns you when 80% of the budget is used!
+---
 
-Goal Tracking: Save up for your dreams. Add cash to specific goals directly from your wallets.
+## ✨ Key Features
 
-Automation: Added support for Recurring Transactions (Auto-add every month) for your fixed bills or rent.
+-   **🔐 Secure Cloud Sync:** Integrated with **Firebase Google Authentication** for real-time data persistence.
+-   **📱 PWA Ready:** Install NaFinance as a native app on your mobile/PC home screen.
+-   **📈 Smart Analytics:** Interactive charts for weekly/monthly expense breakdowns.
+-   **🛡️ PIN Lock Security:** Advanced privacy protection with a custom PIN system.
+-   **💼 Multi-Wallet & Vault:** Track Cash, Bank balances, and secure money in Savings Vault.
+-   **📊 Export:** Generate professional financial statements via CSV and PDF.
 
-🎨 Deep Personalization:
+---
 
-Bilingual Support: Instantly toggle between English and Bengali (বাংলা).
+## 👨‍💻 Author
 
-Custom Categories: Create your own income/expense categories with a built-in Color Picker and Emojis.
+**Mushfiqur Rahman Nafi**
+*Economics Student & Aspiring Web Developer*
 
-Theme Switcher: Beautiful Dark and Light modes to match your vibe.
+-   Email: [mushfiqurnafi@gmail.com](mailto:mushfiqurnafi@gmail.com)
+-   GitHub: [@mrnafi1](https://github.com/mrnafi1)
 
-🔒 Security & Export:
+---
 
-PIN Protection: Lock your app with a 4-digit PIN and a secret recovery word.
-
-Export as PDF & CSV: Generate and print beautiful Excel-style PDF reports or download CSV files of your transactions.
-
-Crash-Proof LocalStorage: Advanced error handling ensures your data never disappears. Plus, easy 1-click JSON Backup & Restore.
+## 📜 License
+Copyright © 2026 Mushfiqur Rahman Nafi. Built with passion to simplify personal finance.
