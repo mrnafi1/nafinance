@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { BarChart, Bar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, Legend } from "recharts";
-import { Plus, Trash2, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut, DownloadCloud, Zap, Hash, Paperclip, Loader2, Image as ImageIcon } from "lucide-react";
-
+import { Plus, Trash2,MessageCircle, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut, DownloadCloud, Zap, Hash, Paperclip, Loader2, Image as ImageIcon } from "lucide-react";
+import TxModal from './components/TxModal';
+import SettingsModal from './components/SettingsModal';
 // 🔥 Firebase Imports
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
@@ -147,6 +148,16 @@ export default function App() {
     }
   };
 
+      const onLogout = async () => {
+    try {
+      await auth.signOut();
+      setFirebaseUser(null);
+      setModal(null); // মডাল বন্ধ করার জন্য
+      showToast(settings.lang === 'bn' ? "লগআউট সফল!" : "Logged out!", "success");
+    } catch (error) {
+      showToast("Error logging out", "error");
+    }
+  };
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
@@ -331,8 +342,10 @@ export default function App() {
         </div>
       </div>
 
+
       {modal === "tx" && <TxModal data={data} saveTx={saveTx} deleteTx={deleteTx} onClose={()=>setModal(null)} TH={TH} editData={editTxData} getCategories={getCategories} lang={settings.lang} showToast={showToast} firebaseUser={firebaseUser} storage={storage} />}
-      {modal === "settings" && <SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={()=>setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR} setConfirmDialog={setConfirmDialog} onLogout={handleLogout} />}
+  {modal === "settings" && (<SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={() => setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR}
+    setConfirmDialog={setConfirmDialog} onLogout={onLogout} genId={genId} CURRENCIES={CURRENCIES} /> )}
     </div>
   );
 }
@@ -525,6 +538,7 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
     if (debtForm.type === "lend") { if (ws[tIdx].balance < amt) return showToast(settings.lang==='bn'?"টাকা নেই":"No cash", "error"); ws[tIdx].balance -= amt; } else { ws[tIdx].balance += amt; }
     const tx = { id: genId(), type: debtForm.type === 'lend' ? 'expense' : 'income', date: debtForm.date, amount: amt, category: debtForm.type === 'lend' ? 'other_ex' : 'other_in', walletId: debtForm.sourceId, note: `${debtForm.type==='lend'?'ধার:':'ঋণ:'} ${debtForm.person}`, tags:[] };
     setData({ ...data, wallets: ws, txs: [tx, ...data.txs], debts: [{...debtForm, id: genId(), amount: amt}, ...data.debts] });
+   
     setDebtForm({ show: false, person: "", amount: "", type: "lend", date: TODAY(), returnDate: "", note: "", sourceId: "w1" }); showToast(settings.lang==='bn'?"সংরক্ষিত":"Saved", "success");
   };
 
@@ -534,7 +548,13 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
     setData({ ...data, wallets: walletForm.id ? data.wallets.map(w=>w.id===walletForm.id?nw:w) : [...data.wallets, nw] });
     setWalletForm({ show: false, name: "", balance: "", icon: "💳", id: null });
   };
-
+ const sendReminder = (debt) => {
+    const msg = settings.lang === 'bn' 
+      ? `ভাই ${debt.person}, আপনার কাছে আমার ${debt.amount}৳ পাওয়া ছিল। সময় করে পাঠিয়ে দিলে খুব উপকার হতো। ধন্যবাদ!`
+      : `Hey ${debt.person}, just a friendly reminder about the ${debt.amount} BDT. Please send it over when you can. Thanks!`;
+    
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  };
   const deleteWalletSafe = (w) => {
     if(data.wallets.length === 1) return showToast(settings.lang==='bn'?"কমপক্ষে ১টি ওয়ালেট থাকতে হবে":"Need 1 wallet minimum", "error");
     const hasTxs = data.txs.some(t => t.walletId === w.id);
@@ -647,6 +667,13 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <p style={{ fontWeight: 800, fontSize:16, color: TH.text }}>{fmt(d.amount)}</p>
+            <button 
+  onClick={(e) => { e.stopPropagation(); sendReminder(d); }} style={{ color: "#25D366", display: "flex", alignItems: "center", gap: 4, background: "none" ,     border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 
+  }}
+>
+  <MessageCircle size={16} />
+  {settings.lang === 'bn' ? 'রিমাইন্ড' : 'Remind'}
+</button>
             <button onClick={()=>{ setConfirmDialog({ show: true, msg: settings.lang==='bn'?"হিসাব ক্লিয়ার করবেন?":"Settle this debt?", onConfirm: () => { const ws = data.wallets.map(w => w.id === d.sourceId ? { ...w, balance: d.type==='lend'? w.balance+d.amount : w.balance-d.amount } : w); setData({...data, wallets: ws, debts: data.debts.filter(x=>x.id!==d.id)}); showToast(settings.lang==='bn'?"ক্লিয়ার!":"Settled!", "success"); }}); }} style={{ padding: "8px 12px", background: TH.bgInner, color: TH.text, borderRadius: 10, border: `1px solid ${TH.border}`, fontWeight: 700, fontSize: 12 }}>Settle</button>
           </div>
         </div>
@@ -908,98 +935,7 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
   );
 }
 
-function TxModal({ data, saveTx, deleteTx, onClose, TH, editData, getCategories, lang, firebaseUser, storage, showToast }) {
-  const [type, setType] = useState(editData?.type || "expense"); 
-  const [f, setF] = useState(editData || { date: TODAY(), category: "food", amount: "", note: "", walletId: data.wallets[0]?.id || "", tags: [], imageUrl: null }); 
-  const [isRecurring, setIsRecurring] = useState(false); 
-  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
-  const [tagInput, setTagInput] = useState(editData?.tags ? editData.tags.join(', ') : "");
 
-  const [file, setFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  
-  const handleFinalSave = async () => {
-     // 🔥 Zero amount checking bug fix
-     if (!f.amount || Number(f.amount) <= 0) {
-        showToast(lang==='bn'?"সঠিক পরিমাণ দিন":"Enter a valid amount", "error");
-        return;
-     }
-
-     let finalUrl = f.imageUrl;
-     
-     if (file && firebaseUser) {
-        setUploading(true);
-        try {
-           const fileRef = ref(storage, `receipts/${firebaseUser.uid}/${Date.now()}_${file.name}`);
-           await uploadBytes(fileRef, file);
-           finalUrl = await getDownloadURL(fileRef);
-        } catch (err) {
-           console.error("Upload failed", err);
-           showToast(lang==='bn'?"ছবি আপলোড ব্যর্থ হয়েছে!":"Upload failed!", "error");
-           setUploading(false);
-           return; 
-        }
-        setUploading(false);
-     }
-     
-     // 🔥 Success boolean check fix
-     const success = saveTx({...f, type, amount: Number(f.amount), id: editData?.id || genId(), imageUrl: finalUrl}, editData, isRecurring, saveAsTemplate);
-     if (success) onClose();
-  };
-
-  return (
-  <div className="animate-fade notranslate" translate="no" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 2000, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 10, backdropFilter: "blur(8px)" }}>
-    <div className="animate-slide notranslate" translate="no" style={{ background: TH.bgCard, padding: "30px 25px", borderRadius: "35px 35px 25px 25px", width: "100%", maxWidth: 480, border: `1px solid ${TH.border}`, maxHeight: "90vh", overflowY: "auto" }}>
-        <div style={{ display: "flex", background: TH.bgInner, padding: 6, borderRadius: 16, marginBottom: 20 }}>
-         <button onClick={() => { setType("expense"); setF(prev => ({...prev, amount: "", category: "food"})); }} style={{ flex: 1, padding: 12, borderRadius: 12, border: "none", background: type==="expense"?"#ef4444":"transparent", color: type==="expense"?"#fff":TH.textMid, fontWeight: 800, fontSize:14 }}>{lang==='bn'?'ব্যয়':'Expense'}</button>
-          <button onClick={() => { setType("income"); setF(prev => ({...prev, amount: "", category: "freelance"})); }} style={{ flex: 1, padding: 12, borderRadius: 12, border: "none", background: type==="income"?"#10b981":"transparent", color: type==="income"?"#fff":TH.textMid, fontWeight: 800, fontSize:14 }}>{lang==='bn'?'আয়':'Income'}</button> 
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20, maxHeight: 180, overflowY: "auto", padding: 5 }}>
-          {getCategories(type).map(c => (<button key={c.id} onClick={()=>setF({...f, category:c.id})} style={{ padding: 12, borderRadius: 16, border: `2px solid ${f.category===c.id?c.color:TH.border}`, background: f.category===c.id?`${c.color}15`:TH.bgInner, color: TH.text, fontSize: 12, fontWeight: 700 }}>{c.icon}<br/><span style={{marginTop:4, display:"inline-block"}}>{c.label[lang] || c.label['en']}</span></button>))}
-        </div>
-        <div style={{ display:"flex", gap:10, marginBottom:15 }}>
-          <select value={f.walletId} onChange={e=>setF({...f, walletId:e.target.value})} style={{ flex:1, padding:14, borderRadius:14, background:TH.bgInner, border:"none", color:TH.text, fontWeight:700, outline:"none", fontSize:14 }}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}</select>
-          <input type="date" value={f.date} onChange={e=>setF({...f, date:e.target.value})} style={{ flex:1, padding:14, borderRadius:14, background:TH.bgInner, border:"none", color:TH.text, fontWeight:700, outline:"none", fontSize:14 }} />
-        </div>
-        <input type="number" placeholder="0" value={f.amount} onChange={e=>setF({...f, amount:e.target.value})} style={{ width: "100%", padding: 20, borderRadius: 20, background: TH.bgInner, border: `1px solid ${TH.border}`, color: TH.primary, fontSize: 40, fontWeight: 800, textAlign: "center", marginBottom: 15, outline: "none", position: "relative", zIndex: 10 }} />
-<input type="text" placeholder={lang==='bn'?'নোট (ঐচ্ছিক)':'Note (Optional)'} value={f.note} onChange={e=>setF({...f, note:e.target.value})} translate="no" spellCheck="false" style={{ width: "100%", padding: 16, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, marginBottom: 15, outline: "none", fontWeight: 600, fontSize:14 }} />
-        
-        <div style={{ display: "flex", alignItems: "center", background: TH.bgInner, borderRadius: 16, padding: "0 16px", marginBottom: 15 }}>
-           <Hash size={18} color={TH.textMid} />
-           <input type="text" placeholder={lang==='bn'?'# ট্যাগ (কমা দিয়ে লিখুন)':'# Tags (comma separated)'} value={tagInput} onChange={e=>setTagInput(e.target.value)} style={{ width: "100%", padding: 16, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, marginBottom: 15, outline: "none", fontWeight: 600, fontSize:14 }}/>
-        </div>
-
-        
-
-        {!editData && (
-          <div style={{ display:"flex", flexDirection:"column", gap: 10, marginBottom:20 }}>
-             <label style={{ display:"flex", alignItems:"center", gap:10, fontWeight:700, fontSize:13, color:TH.textMid, cursor:"pointer", padding:"10px 14px", background:TH.bgInner, borderRadius:14 }}>
-               <input type="checkbox" checked={isRecurring} onChange={e=>setIsRecurring(e.target.checked)} style={{width:18, height:18, accentColor:TH.primary}}/>
-               {lang==='bn'?'প্রতি মাসে স্বয়ংক্রিয়ভাবে যোগ করুন':'Auto-add every month'}
-             </label>
-             <label style={{ display:"flex", alignItems:"center", gap:10, fontWeight:700, fontSize:13, color:TH.textMid, cursor:"pointer", padding:"10px 14px", background:TH.bgInner, borderRadius:14, border: saveAsTemplate ? `1px solid ${TH.primary}` : 'none' }}>
-               <input type="checkbox" checked={saveAsTemplate} onChange={e=>setSaveAsTemplate(e.target.checked)} style={{width:18, height:18, accentColor:TH.primary}}/>
-               {lang==='bn'?'কুইক টেমপ্লেট হিসেবে সেভ করুন':'Save as Quick Add Template'}
-             </label>
-          </div>
-        )}
-        
-        <div style={{ display: "flex", gap: 10 }}>
-          {editData && (
-            <button onClick={() => { deleteTx(editData); onClose(); }} style={{ padding: 18, borderRadius: 16, background: "rgba(239,68,68,0.1)", color: "#ef4444", fontWeight: 800, border: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Trash2 size={20}/>
-            </button>
-          )}
-          <button disabled={uploading} onClick={handleFinalSave} style={{ flex: 1, padding: 18, borderRadius: 16, background: TH.primary, color: "#000", fontWeight: 800, border: "none", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            {uploading ? <Loader2 size={20} className="animate-spin"/> : (lang==='bn'?'সেভ করুন':'Save')}
-          </button>
-        </div>
-
-        <button disabled={uploading} onClick={onClose} style={{ width: "100%", padding: 14, background: "none", border: "none", color: TH.textMid, fontWeight: 700, marginTop:5, fontSize:14 }}>{lang==='bn'?'বাতিল':'Cancel'}</button>
-      </div>
-    </div>
-  );
-}
 
 function PinScreen({ settings, setSettings, onSuccess, TH, showToast, onLogout }) {
   const [input, setInput] = useState(""); 
@@ -1041,85 +977,6 @@ function PinScreen({ settings, setSettings, onSuccess, TH, showToast, onLogout }
   );
 }
 
-function SettingsModal({ settings, setSettings, data, setData, onClose, TH, showToast, AUTHOR, setConfirmDialog, onLogout }) {
-  const [newPin, setNewPin] = useState(""); 
-  const [recovery, setRecovery] = useState(""); 
-  const [newCat, setNewCat] = useState({ type: "expense", name: "", icon: "📦", color: "#8b5cf6" }); 
-  
-  const addCategory = () => { 
-    if(!newCat.name) return showToast(settings.lang==='bn'?"নাম দিন":"Enter Name", "error"); 
-    const n = { id: genId(), label: { bn: newCat.name, en: newCat.name }, icon: newCat.icon, color: newCat.color, bg: `${newCat.color}20` }; 
-    setData({ ...data, customCategories: { ...data.customCategories, [newCat.type]: [...(data.customCategories[newCat.type] || []), n] } }); 
-    setNewCat({ type: "expense", name: "", icon: "📦", color: "#8b5cf6" }); showToast(settings.lang==='bn'?"সফল!":"Added!", "success"); 
-  };
-
-  return (
-    <div className="animate-fade" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 2000, display: "flex", alignItems: "flex-end", justifyContent: "center", backdropFilter: "blur(8px)" }}>
-      <div className="animate-slide" style={{ background: TH.bgCard, padding: "30px 25px 40px", borderRadius: "35px 35px 0 0", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", borderTop:`1px solid ${TH.border}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 25 }}><h2 style={{ fontWeight: 800, color:TH.text }}>{settings.lang==='bn'?'সেটিংস':'Settings'}</h2><button onClick={onClose} style={{ background: "none", border: "none", color: TH.textMid }}><X size={26}/></button></div>
-        
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}>
-          <button onClick={()=>setSettings({...settings, theme: "light"})} style={{ padding: 14, borderRadius: 16, background: settings.theme==='light'?TH.primary:TH.bgInner, color: settings.theme==='light'?'#000':TH.text, border: "none", fontWeight:700, fontSize:14 }}><Sun size={16} style={{marginBottom:-3}}/> Light</button>
-          <button onClick={()=>setSettings({...settings, theme: "dark"})} style={{ padding: 14, borderRadius: 16, background: settings.theme==='dark'?TH.primary:TH.bgInner, color: settings.theme==='dark'?'#000':TH.text, border: "none", fontWeight:700, fontSize:14 }}><Moon size={16} style={{marginBottom:-3}}/> Dark</button>
-        </div>
-        
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}>
-          <button onClick={()=>setSettings({...settings, lang: "bn"})} style={{ padding: 14, borderRadius: 16, background: settings.lang==='bn'?TH.primary:TH.bgInner, color: settings.lang==='bn'?'#000':TH.text, border: "none", fontWeight:700, fontSize:14 }}>বাংলা</button>
-          <button onClick={()=>setSettings({...settings, lang: "en"})} style={{ padding: 14, borderRadius: 16, background: settings.lang==='en'?TH.primary:TH.bgInner, color: settings.lang==='en'?'#000':TH.text, border: "none", fontWeight:700, fontSize:14 }}>English</button>
-        </div>
-        
-        <select value={settings.curr} onChange={e=>setSettings({...settings, curr: e.target.value})} style={{ width: "100%", padding: 16, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 700, marginBottom: 25, outline:"none", fontSize:14 }}>
-          {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.sym})</option>)}
-        </select>
-        
-        <div style={{ padding:20, background:TH.bgInner, borderRadius:24, marginBottom:20 }}>
-          <p style={{ fontWeight:700, marginBottom:12, color:TH.textMid, fontSize:12, textTransform:"uppercase" }}>{settings.lang==='bn'?'নতুন ক্যাটাগরি':'Custom Category'}</p>
-          <div style={{ display:"flex", gap:10, marginBottom:12 }}>
-            <select value={newCat.type} onChange={e=>setNewCat({...newCat, type:e.target.value})} style={{ flex: 1, padding:14, borderRadius:14, background:TH.bgCard, color:TH.text, border:"none", outline:"none", fontWeight:600, fontSize:13 }}>
-              <option value="expense">{settings.lang==='bn'?'ব্যয়':'Expense'}</option><option value="income">{settings.lang==='bn'?'আয়':'Income'}</option>
-            </select>
-            <input type="text" placeholder="🍔" value={newCat.icon} onChange={e=>setNewCat({...newCat, icon:e.target.value})} style={{ width:55, padding:14, borderRadius:14, background:TH.bgCard, color:TH.text, border:"none", textAlign:"center", outline:"none" }} />
-            <input type="color" value={newCat.color} onChange={e=>setNewCat({...newCat, color:e.target.value})} style={{ width:50, height:48, padding:0, border:"none", borderRadius:14, background:"none", cursor:"pointer" }} />
-          </div>
-          <input type="text" placeholder={settings.lang==='bn'?'নাম':'Name'} value={newCat.name} onChange={e=>setNewCat({...newCat, name:e.target.value})} style={{ width:"100%", padding:14, borderRadius:14, background:TH.bgCard, color:TH.text, border:"none", marginBottom:12, outline:"none", fontWeight:600, fontSize:14 }} />
-          <button onClick={addCategory} style={{ width:"100%", padding:14, background:TH.text, color:TH.bg, border:"none", borderRadius:14, fontWeight:800, fontSize:14 }}>Add Category</button>
-        </div>
-
-        <div style={{ padding:20, background:TH.bgInner, borderRadius:24, marginBottom:20 }}>
-          <p style={{ fontWeight:700, marginBottom:12, color:TH.textMid, fontSize:12, textTransform:"uppercase" }}>PIN SECURITY</p>
-          <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:12 }}>
-            <input type="number" placeholder="4-Digit PIN" value={newPin} onChange={e=>setNewPin(e.target.value.slice(0,4))} style={{ width:"100%", padding:14, borderRadius:14, background:TH.bgCard, color:TH.text, border:"none", textAlign:"center", fontWeight:700, outline:"none" }} />
-            <input type="text" placeholder="Secret Recovery Word" value={recovery} onChange={e=>setRecovery(e.target.value)} style={{ width:"100%", padding:14, borderRadius:14, background:TH.bgCard, color:TH.text, border:"none", textAlign:"center", fontWeight:700, outline:"none" }} />
-          </div>
-          <button onClick={()=>{ if(newPin.length===4 && recovery){ setSettings({...settings, pinLock: btoa(newPin), recoveryWord: btoa(recovery.toLowerCase())}); showToast("PIN Set", "success"); } }} style={{ width:"100%", padding:14, background:"#10b981", color:"#fff", border:"none", borderRadius:14, fontWeight:800, fontSize:14 }}>Enable PIN</button>
-          {settings.pinLock && <button onClick={()=>setSettings({...settings, pinLock:"", recoveryWord:""})} style={{ width:"100%", marginTop:10, color:"#ef4444", fontWeight:700, background:"none", border:"none", fontSize:14 }}>Disable PIN</button>}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}>
-          <button onClick={()=>{ const blob = new Blob([JSON.stringify({data, settings})], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `NaFinance_Backup.json`; link.click(); showToast("Backup Success", "success"); }} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, color: TH.text, fontWeight: 700, border:"none", fontSize:14 }}>Backup</button>
-          <label style={{ padding: 14, borderRadius: 16, background: TH.bgInner, color: TH.text, fontWeight: 700, textAlign:"center", cursor:"pointer", fontSize:14 }}>Restore <input type="file" style={{display:"none"}} onChange={(e)=>{ const reader = new FileReader(); reader.onload = (ev) => { try { const p = JSON.parse(ev.target.result); if(p.data) setData({...DEFAULT_DATA, ...p.data}); if(p.settings) setSettings({...DEFAULT_SETTINGS, ...p.settings}); showToast("Restore Success", "success"); } catch(err) { showToast("Invalid File", "error"); } }; reader.readAsText(e.target.files[0]); }}/></label>
-        </div>
-        
-        <button onClick={onLogout} style={{ width: "100%", padding: 16, background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "none", borderRadius: 16, fontWeight: 800, fontSize:14, marginBottom: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><LogOut size={18}/> Log Out (Google)</button>
-        <button onClick={()=>{ setConfirmDialog({show:true, msg:settings.lang==='bn'?"সব ডেটা মুছে যাবে! নিশ্চিত?":"Are you sure to Reset?", onConfirm:()=>{localStorage.clear(); window.location.reload();}}) }} style={{ width: "100%", padding: 16, background: "transparent", color: TH.textMid, border: `1px solid ${TH.border}`, borderRadius: 16, fontWeight: 700, fontSize:14 }}>Factory Reset</button>
-        
-        <div className="animate-scale" style={{ marginTop: 30, padding: 20, background: "linear-gradient(145deg, rgba(251,191,36,0.1), rgba(251,191,36,0.02))", borderRadius: 24, border: `1px solid rgba(251,191,36,0.3)`, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 55, height: 55, borderRadius: 18, background: TH.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, boxShadow: "0 8px 20px rgba(251,191,36,0.4)" }}>
-            👨‍💻
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 11, color: TH.primary, fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", marginBottom: 4 }}>Developer & Creator</p>
-            <h3 style={{ fontSize: 17, fontWeight: 900, color: TH.text, letterSpacing: "-0.5px" }}>{AUTHOR}</h3>
-            <a href="mailto:mushfiqurnafi@gmail.com" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: TH.textMid, fontWeight: 600, marginTop: 4, textDecoration: "none" }}>
-              <Mail size={14} color={TH.primary} /> mushfiqurnafi@gmail.com
-            </a>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
 
 function NavBtn({ active, icon: Icon, label, onClick, TH }) { 
   return (
