@@ -342,8 +342,8 @@ export default function App() {
         </div>
       </div>
 
-
-      {modal === "tx" && <TxModal data={data} saveTx={saveTx} deleteTx={deleteTx} onClose={()=>setModal(null)} TH={TH} editData={editTxData} getCategories={getCategories} lang={settings.lang} showToast={showToast} firebaseUser={firebaseUser} storage={storage} />}
+{modal === "tx" && <TxModal  data={data}  saveTx={saveTx} deleteTx={deleteTx} onClose={() => setModal(null)} TH={TH} editData={editTxData} 
+  getCategories={getCategories}  lang={settings.lang}  showToast={showToast}  firebaseUser={auth.currentUser}  storage={storage} />}
   {modal === "settings" && (<SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={() => setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR}
     setConfirmDialog={setConfirmDialog} onLogout={onLogout} genId={genId} CURRENCIES={CURRENCIES} /> )}
     </div>
