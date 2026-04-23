@@ -1,5 +1,5 @@
 // 🔴 প্রতিবার নতুন আপডেট দিলে নিচের ভার্সন নাম্বারটি পরিবর্তন করবেন (যেমন: v1 থেকে v2)
-const CACHE_NAME = 'nafinance-premium-v2'; 
+const CACHE_NAME = 'nafinance-premium-v4'; 
 
 const assetsToCache = [
   '/',
@@ -34,12 +34,21 @@ self.addEventListener('activate', (event) => {
   );
   return self.clients.claim(); // সাথে সাথে সব ট্যাব কন্ট্রোল নিয়ে নিবে
 });
-
-// ৩. ফেচ ইভেন্ট: নেটওয়ার্ক ফার্স্ট স্ট্র্যাটেজি (যাতে আপডেট দ্রুত পাওয়া যায়)
+// ৩. ফেচ ইভেন্ট: নেটওয়ার্ক ফার্স্ট স্ট্র্যাটেজি (ক্র্যাশ ফিক্সড)
 self.addEventListener('fetch', (event) => {
+  // শুধুমাত্র সাধারণ GET রিকোয়েস্টগুলো ক্যাশ করবে
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
     fetch(event.request).catch(() => {
-      return caches.match(event.request);
+      return caches.match(event.request).then((response) => {
+        // যদি ক্যাশে ডেটা থাকে সেটা দিবে, না থাকলে অ্যাপ ক্র্যাশ না করিয়ে একটা ডিফল্ট মেসেজ দিবে
+        return response || new Response("Offline Content Not Found", {
+          status: 503,
+          statusText: "Service Unavailable",
+          headers: new Headers({ 'Content-Type': 'text/plain' })
+        });
+      });
     })
   );
 });
