@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { BarChart, Bar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, Legend } from "recharts";
-import { Plus, Trash2,MessageCircle, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut, DownloadCloud, Zap, Hash, Paperclip, Loader2, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, MessageCircle, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut, DownloadCloud, Zap, Hash, Paperclip, Loader2, Image as ImageIcon } from "lucide-react";
 import TxModal from './components/TxModal';
 import SettingsModal from './components/SettingsModal';
+
 // 🔥 Firebase Imports
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
@@ -22,29 +23,66 @@ const firebaseConfig = {
   appId: "1:153707489931:web:0a8fcf471235a77936828e"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
-// 🚀 Premium Navy & Gold UI Animations
-const FONT_STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;600;700&display=swap'); 
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; -webkit-font-smoothing: antialiased; } 
-  body { font-size: 16px; overscroll-behavior-y: none; background: #0B1121; } 
+// 🚀 Premium Global Styles
+const PREMIUM_STYLE = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap'); 
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; } 
+  
+  :root {
+    --bg-main: #080c14;
+    --bg-secondary: #0d1220;
+    --card-bg: rgba(255,255,255,0.04);
+    --card-border: rgba(255,255,255,0.08);
+    --gold-primary: #f0b429;
+    --gold-secondary: #ffd166;
+    --gold-bg: rgba(240,180,41,0.15);
+    --gold-glow: rgba(240,180,41,0.25);
+    --text-main: #f0f4ff;
+    --text-muted: rgba(240,244,255,0.45);
+    --balance-bg: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+    --balance-border: rgba(255,255,255,0.1);
+    --balance-text: #ffffff;
+    --btn-text: #1a1610;
+    --glass-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);
+  }
+
+  [data-theme="light"] {
+    --bg-main: #f5f3ee;
+    --bg-secondary: #ede9e2;
+    --card-bg: #ffffff;
+    --card-border: rgba(0,0,0,0.07);
+    --gold-primary: #c8820a;
+    --gold-secondary: #f5a623;
+    --gold-bg: #fff8ed;
+    --gold-glow: rgba(200,130,10,0.2);
+    --text-main: #1a1610;
+    --text-muted: #9e9890;
+    --balance-bg: linear-gradient(145deg, #1a1610 0%, #2d2418 100%);
+    --balance-border: rgba(0,0,0,0.1);
+    --balance-text: #ffffff;
+    --btn-text: #ffffff;
+    --glass-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+
+  body { font-size: 16px; overscroll-behavior-y: none; background: var(--bg-main); color: var(--text-main); transition: background 0.3s ease, color 0.3s ease; } 
   input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } 
   input[type=number] { -moz-appearance: textfield; }
+  select, input, button { font-family: 'DM Sans', sans-serif; }
   
   @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes slideDownFade { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes pulseGlow { 0% { box-shadow: 0 0 15px rgba(251,191,36,0.3); } 100% { box-shadow: 0 0 30px rgba(251,191,36,0.6); } }
+  @keyframes pulseGlow { 0% { box-shadow: 0 0 15px var(--gold-glow); } 100% { box-shadow: 0 0 30px var(--gold-glow); } }
   @keyframes spin { 100% { transform: rotate(360deg); } }
-  .animate-spin { animation: spin 1s linear infinite; }
   
+  .animate-spin { animation: spin 1s linear infinite; }
   .animate-slide { animation: slideUpFade 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
   .animate-slide-down { animation: slideDownFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
   .animate-scale { animation: scaleIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
@@ -52,14 +90,22 @@ const FONT_STYLE = `
   
   button { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
   button:active { transform: scale(0.94); }
-  .tx-card { transition: all 0.2s ease; }
-  .tx-card:active { transform: scale(0.97); background: rgba(255,255,255,0.03) !important; }
-
-  .glass-header { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
   
+  .tx-card { transition: all 0.2s ease; }
+  .tx-card:hover { transform: translateY(-2px); box-shadow: var(--glass-shadow); border-color: var(--gold-glow); }
+  .tx-card:active { transform: scale(0.97); }
+
+  .blob1 { position: fixed; top: -60px; right: -60px; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%); pointer-events: none; z-index: 0; }
+  .blob2 { position: fixed; bottom: 120px; left: -80px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%); pointer-events: none; z-index: 0; }
+  
+  .glass-panel { background: var(--card-bg); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--card-border); box-shadow: var(--glass-shadow); }
+  
+  .premium-btn { background: linear-gradient(135deg, var(--gold-secondary), var(--gold-primary)); color: var(--btn-text); border: none; font-weight: 800; box-shadow: 0 4px 15px var(--gold-glow); transition: 0.3s; }
+  .premium-btn:hover { box-shadow: 0 6px 20px var(--gold-glow); transform: translateY(-1px); }
+
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(251, 191, 36, 0.3); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--gold-primary); border-radius: 10px; opacity: 0.5; }
 `;
 
 const BASE_CATEGORIES = {
@@ -87,9 +133,17 @@ const CURRENCIES = [
 const TODAY = () => new Date().toISOString().split("T")[0];
 const genId = () => Math.random().toString(36).substring(2, 11);
 
+// 🔴 ফিক্স: English Language সিলেক্ট করলে 1,2,3 হিসেবে দেখাবে
 const fmtMoney = (n, curr, lang) => {
   const c = CURRENCIES.find(x => x.code === curr) || CURRENCIES[0];
-  return new Intl.NumberFormat(lang === "bn" ? "bn-BD" : c.loc, { style: "currency", currency: c.code, minimumFractionDigits: 0 }).format(n || 0);
+  const locale = lang === 'bn' ? 'bn-BD' : 'en-US';
+  const numStr = new Intl.NumberFormat(locale, { 
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+    useGrouping: true
+  }).format(n || 0);
+  
+  return lang === 'bn' ? `${numStr}${c.sym}` : `${c.sym}${numStr}`;
 };
 
 const formatDate = (isoDate) => {
@@ -128,6 +182,10 @@ export default function App() {
   const showToast = (msg, type="error") => { setToastMsg({ msg, type }); setTimeout(() => setToastMsg(null), 2500); };
 
   useEffect(() => {
+    document.documentElement.setAttribute('data-theme', settings.theme);
+  }, [settings.theme]);
+
+  useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -148,16 +206,17 @@ export default function App() {
     }
   };
 
-      const onLogout = async () => {
+  const onLogout = async () => {
     try {
       await auth.signOut();
       setFirebaseUser(null);
-      setModal(null); // মডাল বন্ধ করার জন্য
+      setModal(null);
       showToast(settings.lang === 'bn' ? "লগআউট সফল!" : "Logged out!", "success");
     } catch (error) {
       showToast("Error logging out", "error");
     }
   };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
@@ -205,10 +264,11 @@ export default function App() {
     if (updated) { setData({ ...data, txs: newTxs, wallets: newWs, recurring: newRec }); showToast(settings.lang==='bn'?"স্বয়ংক্রিয় পেমেন্ট যোগ হয়েছে!":"Auto-payments added!", "success"); }
   }, [isDbLoaded]);
 
-  const isDark = settings.theme === "dark";
-  const TH = isDark 
-    ? { bg: "#0B1121", bgCard: "#151F32", bgInner: "#1E2A45", border: "rgba(255,255,255,0.05)", text: "#F8FAFC", textMid: "#94A3B8", primary: "#FBBF24", primaryBg: "rgba(251,191,36,0.15)", glow: "rgba(251,191,36,0.25)" } 
-    : { bg: "#F3F4F6", bgCard: "#FFFFFF", bgInner: "#F9FAFB", border: "rgba(0,0,0,0.06)", text: "#111827", textMid: "#6B7280", primary: "#D97706", primaryBg: "rgba(217,119,6,0.15)", glow: "rgba(217,119,6,0.2)" };
+  const TH = { 
+    bg: "var(--bg-main)", bgCard: "var(--card-bg)", bgInner: "var(--bg-secondary)", 
+    border: "var(--card-border)", text: "var(--text-main)", textMid: "var(--text-muted)", 
+    primary: "var(--gold-primary)", primaryBg: "var(--gold-bg)", glow: "var(--gold-glow)", mode: settings.theme
+  };
   
   const fmt = n => settings.hideBalance ? "••••" : fmtMoney(n, settings.curr, settings.lang);
   const getCategories = (type) => [...BASE_CATEGORIES[type], ...(data.customCategories?.[type] || [])];
@@ -262,27 +322,28 @@ export default function App() {
   if (!isAuthenticated && settings.pinLock) return <PinScreen settings={settings} setSettings={setSettings} onSuccess={() => setIsAuthenticated(true)} TH={TH} showToast={showToast} onLogout={handleLogout} />;
 
   return (
-    <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, position: "relative" }}>
-      <style>{FONT_STYLE}</style>
+    <div ref={appRef} style={{ minHeight: "100vh", background: TH.bg, color: TH.text, position: "relative", overflowX: "hidden" }}>
+      <style>{PREMIUM_STYLE}</style>
+      <div className="blob1" /><div className="blob2" />
       
       {showInstallPrompt && (
-        <div className="animate-slide-down" style={{ position: "fixed", top: 15, left: "50%", transform: "translateX(-50%)", width: "90%", maxWidth: 440, background: TH.bgCard, padding: "16px 20px", borderRadius: 20, zIndex: 7000, display: "flex", alignItems: "center", justifyContent: "space-between", border: `1px solid ${TH.primary}`, boxShadow: `0 15px 40px rgba(0,0,0,0.6)` }}>
+        <div className="animate-slide-down glass-panel" style={{ position: "fixed", top: 15, left: "50%", transform: "translateX(-50%)", width: "90%", maxWidth: 440, padding: "16px 20px", borderRadius: 24, zIndex: 7000, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 44, height: 44, background: TH.primary, borderRadius: 12, display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontWeight:900, fontSize: 20 }}>N</div>
+            <div style={{ width: 44, height: 44, background: TH.primary, borderRadius: 12, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--btn-text)", fontWeight:900, fontSize: 20 }}>N</div>
             <div>
               <p style={{ fontWeight: 800, fontSize: 15, color: TH.text, marginBottom: 2 }}>Install NaFinance</p>
               <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600 }}>Get the full app experience</p>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={handleInstallApp} style={{ background: TH.primary, color: "#000", border: "none", padding: "10px 18px", borderRadius: 12, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><DownloadCloud size={16}/> Install</button>
+            <button onClick={handleInstallApp} className="premium-btn" style={{ padding: "10px 18px", borderRadius: 12, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><DownloadCloud size={16}/> Install</button>
             <button onClick={() => setShowInstallPrompt(false)} style={{ background: "none", border: "none", color: TH.textMid }}><X size={20}/></button>
           </div>
         </div>
       )}
 
       {toastMsg && (
-        <div className="animate-scale" style={{ position: "fixed", top: showInstallPrompt ? 90 : 30, left: "50%", transform: "translateX(-50%)", background: TH.bgCard, color: TH.text, padding: "14px 24px", borderRadius: 30, boxShadow: `0 10px 30px rgba(0,0,0,0.5)`, zIndex: 5000, display: "flex", alignItems: "center", gap: 12, fontWeight: 700, fontSize: 14, border: `1px solid ${toastMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+        <div className="animate-scale glass-panel" style={{ position: "fixed", top: showInstallPrompt ? 90 : 30, left: "50%", transform: "translateX(-50%)", padding: "14px 24px", borderRadius: 30, zIndex: 5000, display: "flex", alignItems: "center", gap: 12, fontWeight: 700, fontSize: 14, border: `1px solid ${toastMsg.type === 'success' ? '#10b981' : '#ef4444'}` }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: toastMsg.type === 'success' ? '#10b981' : '#ef4444', boxShadow: `0 0 10px ${toastMsg.type === 'success' ? '#10b981' : '#ef4444'}` }} /> {toastMsg.msg}
         </div>
       )}
@@ -300,21 +361,23 @@ export default function App() {
         </div>
       )}
       
-      <header className="glass-header" style={{ position: "sticky", top: 0, zIndex: 50, background: isDark ? "rgba(11,17,33,0.8)" : "rgba(243,244,246,0.8)", borderBottom: `1px solid ${TH.border}`, padding: "16px 20px" }}>
+      <header className="glass-panel" style={{ position: "sticky", top: 0, zIndex: 50, borderTop: "none", borderLeft: "none", borderRight: "none", padding: "16px 20px" }}>
         <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {firebaseUser?.photoURL ? (
-              <img src={firebaseUser.photoURL} alt="Profile" style={{ width: 40, height: 40, borderRadius: 12, border: `2px solid ${TH.primary}`, boxShadow: `0 5px 15px ${TH.glow}`, objectFit: "cover" }} />
+              <img src={firebaseUser.photoURL} alt="Profile" style={{ width: 40, height: 40, borderRadius: 12, border: `2px solid var(--gold-primary)`, boxShadow: `0 5px 15px var(--gold-glow)`, objectFit: "cover" }} />
             ) : (
-              <div style={{ width: 40, height: 40, background: TH.primary, borderRadius: 12, display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontWeight:900, fontSize: 18, boxShadow: `0 5px 15px ${TH.glow}` }}>{firebaseUser?.displayName?.charAt(0) || "N"}</div>
+              <div style={{ width: 40, height: 40, background: "linear-gradient(135deg, var(--gold-primary), var(--gold-secondary))", borderRadius: 12, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--btn-text)", fontWeight:900, fontSize: 18, boxShadow: `0 5px 15px var(--gold-glow)` }}>{firebaseUser?.displayName?.charAt(0) || "N"}</div>
             )}
-            <span style={{ fontWeight: 800, fontSize: 20, color: TH.primary, letterSpacing: "0.5px" }}>{APP_NAME}</span>
+            <span style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 22, letterSpacing: "-0.5px" }}>
+               Na<span style={{color: "var(--gold-primary)"}}>Finance</span>
+            </span>
           </div>
-          <button onClick={() => setModal("settings")} style={{ padding: 10, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 14, color: TH.textMid }}><Settings size={20}/></button>
+          <button onClick={() => setModal("settings")} style={{ padding: 10, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 14, color: TH.textMid, boxShadow: "var(--glass-shadow)", cursor:"pointer" }}><Settings size={20}/></button>
         </div>
       </header>
 
-      <main className="animate-slide" style={{ maxWidth: 480, margin: "0 auto", padding: "15px 20px 140px" }}>
+      <main className="animate-slide" style={{ maxWidth: 480, margin: "0 auto", padding: "15px 20px 140px", position:"relative", zIndex:1 }}>
         {tab === "home" && <HomeView data={data} setData={setData} fmt={fmt} TH={TH} settings={settings} setSettings={setSettings} getCategories={getCategories} deleteTx={deleteTx} setEditTxData={setEditTxData} setModal={setModal} setConfirmDialog={setConfirmDialog} deleteTemplate={deleteTemplate} saveTx={saveTx} />}
         {tab === "assets" && <AssetsView data={data} setData={setData} fmt={fmt} TH={TH} showToast={showToast} settings={settings} setConfirmDialog={setConfirmDialog} />}
         {tab === "planning" && <PlanningView data={data} setData={setData} fmt={fmt} TH={TH} settings={settings} getCategories={getCategories} showToast={showToast} setConfirmDialog={setConfirmDialog} />}
@@ -323,7 +386,7 @@ export default function App() {
 
       <div style={{ position: "fixed", bottom: 25, left: 0, right: 0, zIndex: 100, pointerEvents: "none" }}>
         <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 20px", position: "relative" }}>
-          <nav style={{ background: isDark ? "rgba(21, 31, 50, 0.95)" : "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", border: `1px solid ${TH.border}`, borderRadius: 35, padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems:"center", pointerEvents: "auto", boxShadow: "0 20px 40px rgba(0,0,0,0.5)" }}>
+          <nav className="glass-panel" style={{ borderRadius: 35, padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems:"center", pointerEvents: "auto", boxShadow: "0 20px 40px rgba(0,0,0,0.15)" }}>
             <div style={{ display: "flex", gap: 5, flex: 1, justifyContent: "space-around" }}>
               <NavBtn active={tab==="home"} icon={Home} label={settings.lang==='bn'?'হোম':'HOME'} onClick={()=>setTab("home")} TH={TH}/>
               <NavBtn active={tab==="assets"} icon={Wallet} label={settings.lang==='bn'?'ওয়ালেট':'WALLET'} onClick={()=>setTab("assets")} TH={TH}/>
@@ -336,41 +399,38 @@ export default function App() {
               <NavBtn active={tab==="graphs"} icon={BarChart2} label={settings.lang==='bn'?'বিশ্লেষণ':'GRAPHS'} onClick={()=>setTab("graphs")} TH={TH}/>
             </div>
           </nav>
-          <button onClick={() => { setEditTxData(null); setModal("tx"); }} style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: 20, width: 64, height: 64, background: TH.primary, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 10px 25px ${TH.glow}`, border: `5px solid ${TH.bg}`, color: "#000", pointerEvents: "auto" }}>
-            <Plus size={32} strokeWidth={2.5}/>
+          
+          <button onClick={() => { setEditTxData(null); setModal("tx"); }} className="premium-btn" style={{ position: "absolute", left: "50%", transform: "translateX(-50%) rotate(45deg)", bottom: 20, width: 64, height: 64, borderRadius: "20px", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "auto" }}>
+            <Plus size={32} strokeWidth={2.5} style={{transform: "rotate(-45deg)"}}/>
           </button>
         </div>
       </div>
 
-{modal === "tx" && <TxModal  data={data}  saveTx={saveTx} deleteTx={deleteTx} onClose={() => setModal(null)} TH={TH} editData={editTxData} 
-  getCategories={getCategories}  lang={settings.lang}  showToast={showToast}  firebaseUser={auth.currentUser}  storage={storage} />}
-  {modal === "settings" && (<SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={() => setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR}
-    setConfirmDialog={setConfirmDialog} onLogout={onLogout} genId={genId} CURRENCIES={CURRENCIES} /> )}
+      {modal === "tx" && <TxModal data={data} saveTx={saveTx} deleteTx={deleteTx} onClose={() => setModal(null)} TH={TH} editData={editTxData} getCategories={getCategories} lang={settings.lang} showToast={showToast} firebaseUser={auth.currentUser} storage={storage} />}
+      {modal === "settings" && <SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={() => setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR} setConfirmDialog={setConfirmDialog} onLogout={onLogout} genId={genId} CURRENCIES={CURRENCIES} />}
     </div>
   );
 }
 
-// 🛡️ Loading Screen
 function LoadingScreen({ TH }) {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: TH.bg }}>
-      <style>{FONT_STYLE}</style>
-      <div style={{ width: 64, height: 64, background: TH.primary, borderRadius: 20, display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontWeight:900, fontSize: 28, animation: "pulseGlow 1s infinite alternate" }}>N</div>
+      <style>{PREMIUM_STYLE}</style>
+      <div style={{ width: 64, height: 64, background: "var(--gold-primary)", borderRadius: 20, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--btn-text)", fontWeight:900, fontSize: 28, animation: "pulseGlow 1s infinite alternate" }}>N</div>
       <p style={{ marginTop: 25, color: TH.textMid, fontWeight: 700, fontSize: 14 }}>Connecting securely...</p>
     </div>
   );
 }
 
-// 🛡️ Login Screen
 function AuthScreen({ TH, onLogin }) {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: TH.bg, padding: 20 }}>
-      <style>{FONT_STYLE}</style>
-      <div className="animate-scale" style={{ padding: 40, background: TH.bgCard, borderRadius: 32, border: `1px solid ${TH.border}`, textAlign: "center", boxShadow: `0 20px 50px rgba(0,0,0,0.5)`, width: "100%", maxWidth: 360 }}>
-        <div style={{ width: 64, height: 64, background: TH.primary, borderRadius: 20, display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontWeight:900, fontSize: 28, margin: "0 auto 20px", boxShadow: `0 10px 25px ${TH.glow}` }}>N</div>
-        <h2 style={{ fontSize: 24, fontWeight: 900, color: TH.primary, marginBottom: 10 }}>NaFinance</h2>
+      <style>{PREMIUM_STYLE}</style>
+      <div className="animate-scale glass-panel" style={{ padding: 40, borderRadius: 32, textAlign: "center", width: "100%", maxWidth: 360 }}>
+        <div style={{ width: 64, height: 64, background: "linear-gradient(135deg, var(--gold-primary), var(--gold-secondary))", borderRadius: 20, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--btn-text)", fontWeight:900, fontSize: 28, margin: "0 auto 20px", boxShadow: `0 10px 25px var(--gold-glow)` }}>N</div>
+        <h2 style={{ fontFamily:"Syne", fontSize: 26, fontWeight: 900, color: "var(--gold-primary)", marginBottom: 10 }}>NaFinance</h2>
         <p style={{ color: TH.textMid, fontSize: 14, fontWeight: 600, marginBottom: 35 }}>Premium Wealth Management</p>
-        <button onClick={onLogin} style={{ width: "100%", padding: 18, background: "#fff", color: "#000", borderRadius: 16, border: "none", fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 10px 25px rgba(255,255,255,0.1)" }}>
+        <button onClick={onLogin} style={{ width: "100%", padding: 18, background: "#fff", color: "#000", borderRadius: 16, border: "none", fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 10px 25px rgba(255,255,255,0.1)", cursor:"pointer" }}>
           <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.86C4.01 20.64 7.69 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.05H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.95l3.66-2.86z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.69 1 4.01 3.36 2.18 7.05l3.66 2.86c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
           Sign in with Google
         </button>
@@ -420,41 +480,42 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {overdueDebts.map(d => (<div key={`od-${d.id}`} className="animate-scale" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", padding: "14px 18px", borderRadius: 20, display: "flex", alignItems: "center", gap: 12, color: "#ef4444" }}><AlertTriangle size={18}/> <span style={{fontSize:13, fontWeight:700}}>{settings.lang==='bn'?'ওভারডিউ ধার:':'Overdue Debt:'} {d.person} ({fmt(d.amount)})</span></div>))}
-      {activeAlerts.map(cat => (<div key={cat.id} className="animate-scale" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", padding: "14px 18px", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}><div style={{display:"flex", alignItems:"center", gap: 12}}><AlertTriangle size={18} color="#f59e0b"/> <span style={{fontSize:13, fontWeight:700, color:TH.text}}>{cat.icon} {cat.label[settings.lang] || cat.label['en']} {settings.lang==='bn'?'বাজেট ৮০% শেষ!':'80% budget used!'}</span></div><button onClick={() => setData({ ...data, dismissedAlerts: [...(data.dismissedAlerts || []), cat.id] })} style={{background:"none", border:"none", color: TH.textMid}}><X size={18}/></button></div>))}
+      {activeAlerts.map(cat => (<div key={cat.id} className="animate-scale" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", padding: "14px 18px", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}><div style={{display:"flex", alignItems:"center", gap: 12}}><AlertTriangle size={18} color="#f59e0b"/> <span style={{fontSize:13, fontWeight:700, color:TH.text}}>{cat.icon} {cat.label[settings.lang] || cat.label['en']} {settings.lang==='bn'?'বাজেট ৮০% শেষ!':'80% budget used!'}</span></div><button onClick={() => setData({ ...data, dismissedAlerts: [...(data.dismissedAlerts || []), cat.id] })} style={{background:"none", border:"none", color: TH.textMid, cursor:"pointer"}}><X size={18}/></button></div>))}
       
-      <div style={{ padding: "28px 24px", borderRadius: 28, background: TH.bgCard, border: `1px solid ${TH.border}`, position: "relative", overflow: "hidden", boxShadow: `0 15px 40px rgba(0,0,0,0.2)` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div style={{ padding: "28px 24px", borderRadius: 28, background: "var(--balance-bg)", border: `1px solid var(--balance-border)`, position: "relative", overflow: "hidden", boxShadow: `0 15px 40px rgba(0,0,0,0.2)` }}>
+        <div style={{ position: "absolute", top: -70, right: -70, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, var(--gold-glow) 0%, transparent 65%)" }}/>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative", zIndex: 1 }}>
           <div>
-            <p style={{ fontSize: 12, color: TH.textMid, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>{settings.lang==='bn'?'মোট ব্যালেন্স':'Total Balance'}</p>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase" }}>{settings.lang==='bn'?'মোট ব্যালেন্স':'Total Balance'}</p>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-              <h2 style={{ fontSize: 44, fontWeight: 900, color: TH.primary, letterSpacing: "-1px" }}>{fmt(total)}</h2>
+              <h2 style={{ fontFamily: 'Syne', fontSize: 44, fontWeight: 900, color: "var(--balance-text)", letterSpacing: "-1px" }}>{fmt(total)}</h2>
             </div>
           </div>
-          <button onClick={()=>setSettings({...settings, hideBalance: !settings.hideBalance})} style={{ padding: 12, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 14, color: TH.textMid }}>
+          <button onClick={()=>setSettings({...settings, hideBalance: !settings.hideBalance})} style={{ padding: 12, background: "rgba(255,255,255,0.1)", border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 14, color: "#fff", cursor:"pointer" }}>
             {settings.hideBalance ? <Eye size={20}/> : <EyeOff size={20}/>}
           </button>
         </div>
 
-        <div style={{ display: "flex", gap: 15, marginTop: 35 }}>
-          <div style={{ flex: 1 }}>
-             <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingUp size={14} color="#10b981"/> {settings.lang==='bn'?'আয়':'INCOME'}</p>
-             <p style={{ fontSize: 16, fontWeight: 700, color: "#10b981", marginTop: 4 }}>{fmt(monthlyInc)}</p>
+        <div style={{ display: "flex", gap: 15, marginTop: 35, position: "relative", zIndex: 1 }}>
+          <div style={{ flex: 1, background: "rgba(255,255,255,0.1)", padding: "10px", borderRadius: "14px" }}>
+             <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingUp size={12} color="#4ade80"/> {settings.lang==='bn'?'আয়':'INCOME'}</p>
+             <p style={{ fontFamily: 'Syne', fontSize: 15, fontWeight: 700, color: "#4ade80", marginTop: 4 }}>{fmt(monthlyInc)}</p>
           </div>
-          <div style={{ flex: 1, borderLeft: `1px solid ${TH.border}`, paddingLeft: 15 }}>
-             <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingDown size={14} color="#ef4444"/> {settings.lang==='bn'?'ব্যয়':'EXPENSE'}</p>
-             <p style={{ fontSize: 16, fontWeight: 700, color: "#ef4444", marginTop: 4 }}>{fmt(monthlyExp)}</p>
+          <div style={{ flex: 1, background: "rgba(255,255,255,0.1)", padding: "10px", borderRadius: "14px" }}>
+             <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingDown size={12} color="#f87171"/> {settings.lang==='bn'?'ব্যয়':'EXPENSE'}</p>
+             <p style={{ fontFamily: 'Syne', fontSize: 15, fontWeight: 700, color: "#f87171", marginTop: 4 }}>{fmt(monthlyExp)}</p>
           </div>
-          <div style={{ flex: 1, borderLeft: `1px solid ${TH.border}`, paddingLeft: 15 }}>
-             <p style={{ fontSize: 11, color: TH.textMid, fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><Activity size={14} color="#3b82f6"/> {settings.lang==='bn'?'সঞ্চয়':'SAVINGS'}</p>
-             <p style={{ fontSize: 16, fontWeight: 700, color: "#3b82f6", marginTop: 4 }}>{fmt(monthlySav)}</p>
+          <div style={{ flex: 1, background: "rgba(255,255,255,0.1)", padding: "10px", borderRadius: "14px" }}>
+             <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><Activity size={12} color="#93c5fd"/> {settings.lang==='bn'?'সঞ্চয়':'SAVINGS'}</p>
+             <p style={{ fontFamily: 'Syne', fontSize: 15, fontWeight: 700, color: "#93c5fd", marginTop: 4 }}>{fmt(monthlySav)}</p>
           </div>
         </div>
       </div>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={exportCSV} style={{ flex:1, padding:"14px", borderRadius:18, background:TH.bgCard, color:TH.text, fontWeight:700, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid rgba(16,185,129,0.3)`, boxShadow: "0 4px 15px rgba(16,185,129,0.05)" }}><Download size={18} color="#10b981"/> CSV</button>
-        <button onClick={exportPDF} style={{ flex:1, padding:"14px", borderRadius:18, background:TH.bgCard, color:TH.text, fontWeight:700, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, border:`1px solid rgba(239,68,68,0.3)`, boxShadow: "0 4px 15px rgba(239,68,68,0.05)" }}><FileText size={18} color="#ef4444"/> PDF</button>
-        <select value={dateRange} onChange={e=>setDateRange(e.target.value)} style={{ padding: "0 14px", borderRadius: 18, background: TH.bgCard, border:`1px solid ${TH.border}`, color: TH.textMid, fontWeight: 700, fontSize:14, outline:"none", flex:1.2 }}>
+        <button onClick={exportCSV} className="glass-panel" style={{ flex:1, padding:"12px", borderRadius:16, color:TH.text, fontWeight:700, border:"none", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, cursor:"pointer" }}><Download size={16} color="#10b981"/> CSV</button>
+        <button onClick={exportPDF} className="glass-panel" style={{ flex:1, padding:"12px", borderRadius:16, color:TH.text, fontWeight:700, border:"none", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, cursor:"pointer" }}><FileText size={16} color="#ef4444"/> PDF</button>
+        <select value={dateRange} onChange={e=>setDateRange(e.target.value)} className="glass-panel" style={{ padding: "0 14px", borderRadius: 16, color: TH.textMid, fontWeight: 700, fontSize:13, outline:"none", flex:1.2, cursor:"pointer" }}>
           <option value="all">{settings.lang==='bn'?'সব সময়':'All Time'}</option>
           <option value="month">{settings.lang==='bn'?'এই মাস':'This Month'}</option>
           <option value="week">{settings.lang==='bn'?'গত ৭ দিন':'Last 7 Days'}</option>
@@ -468,15 +529,15 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
              {data.templates.map(tmp => {
                 const cat = getCategories(tmp.type).find(c => c.id === tmp.category) || {icon:"📝"};
                 return (
-                  <div key={tmp.id} className="animate-scale" style={{ flexShrink: 0, display:"flex", alignItems:"center", background: TH.bgCard, border: `1px solid ${TH.border}`, borderRadius: 16, padding: "8px 12px", gap: 8 }}>
+                  <div key={tmp.id} className="animate-scale glass-panel" style={{ flexShrink: 0, display:"flex", alignItems:"center", borderRadius: 16, padding: "8px 12px", gap: 8 }}>
                     <button onClick={() => {
                         const defaultWalletId = data.wallets.find(w => w.id === tmp.walletId)?.id || (data.wallets.length > 0 ? data.wallets[0].id : "");
                         const newTx = { id: genId(), type: tmp.type, date: TODAY(), amount: tmp.amount, category: tmp.category, walletId: defaultWalletId, note: tmp.note, tags: tmp.tags || [], imageUrl: null };
                         saveTx(newTx, null, false, false);
-                    }} style={{ display:"flex", alignItems:"center", gap:8, background:"none", border:"none", color:TH.text, fontWeight:700, fontSize:13 }}>
+                    }} style={{ display:"flex", alignItems:"center", gap:8, background:"none", border:"none", color:TH.text, fontWeight:700, fontSize:13, cursor:"pointer" }}>
                        <span style={{fontSize:16}}>{cat.icon}</span> {tmp.note} ({fmt(tmp.amount)})
                     </button>
-                    <button onClick={()=>deleteTemplate(tmp.id)} style={{ background:"none", border:"none", color:TH.textMid, marginLeft: 5, padding:2 }}><X size={14}/></button>
+                    <button onClick={()=>deleteTemplate(tmp.id)} style={{ background:"none", border:"none", color:TH.textMid, marginLeft: 5, padding:2, cursor:"pointer" }}><X size={14}/></button>
                   </div>
                 )
              })}
@@ -485,11 +546,11 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
       )}
       
       <div style={{ display: "flex", gap: 10, width: "100%" }}>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, background: TH.bgCard, padding: "14px 18px", borderRadius: 20, border: `1px solid ${TH.border}` }}>
+        <div className="glass-panel" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, padding: "12px 18px", borderRadius: 20 }}>
           <Search size={18} color={TH.textMid} style={{ flexShrink: 0 }}/>
-          <input type="text" placeholder={settings.lang==='bn'?'নোট বা #ট্যাগ খুঁজুন...':'Search notes or #tags...'} value={search} onChange={e=>setSearch(e.target.value)} style={{ background:"none", border:"none", color:TH.text, outline:"none", width:"100%", fontSize:15, fontWeight:600 }}/>
+          <input type="text" placeholder={settings.lang==='bn'?'নোট বা #ট্যাগ খুঁজুন...':'Search notes or #tags...'} value={search} onChange={e=>setSearch(e.target.value)} style={{ background:"none", border:"none", color:TH.text, outline:"none", width:"100%", fontSize:14, fontWeight:600 }}/>
         </div>
-        <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} style={{ width: "115px", flexShrink: 0, padding: "0 14px", borderRadius: 20, background: TH.bgCard, border: `1px solid ${TH.border}`, color: TH.text, fontWeight: 700, outline:"none", fontSize:14, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+        <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} className="glass-panel" style={{ width: "115px", flexShrink: 0, padding: "0 14px", borderRadius: 20, color: TH.text, fontWeight: 700, outline:"none", fontSize:13, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", cursor:"pointer" }}>
           <option value="all">All</option>
           {getCategories("expense").map(c => <option key={c.id} value={c.id}>{c.icon} {c.label[settings.lang] || c.label['en']}</option>)}
         </select>
@@ -499,11 +560,11 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
         {filteredTxs.slice(0, 30).map(tx => {
           const cat = getCategories(tx.type).find(c => c.id === tx.category) || {icon:"📝", bg:"rgba(148,163,184,0.1)", label:{bn:"অন্যান্য", en:"Other"}};
           return (
-            <div key={tx.id} className="tx-card" style={{ padding: "18px 20px", background: TH.bgCard, borderRadius: 24, border: `1px solid ${TH.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => { setEditTxData(tx); setModal("tx"); }}>
+            <div key={tx.id} className="tx-card glass-panel" style={{ padding: "16px 18px", borderRadius: 20, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => { setEditTxData(tx); setModal("tx"); }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 16, background: cat.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{cat.icon}</div>
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: cat.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{cat.icon}</div>
                 <div>
-                  <p style={{ fontWeight: 700, fontSize: 16, color: TH.text, marginBottom: 2, display:"flex", alignItems:"center", gap:6 }}>
+                  <p style={{ fontWeight: 700, fontSize: 15, color: TH.text, marginBottom: 2, display:"flex", alignItems:"center", gap:6 }}>
                      {tx.note || cat.label[settings.lang] || cat.label['en']} 
                      {tx.imageUrl && <Paperclip size={14} color={TH.textMid} />}
                   </p>
@@ -516,8 +577,8 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <p style={{ fontWeight: 800, fontSize: 16, color: tx.type === "income" ? "#10b981" : TH.text }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
-                <button onClick={(e) => { e.stopPropagation(); deleteTx(tx); }} style={{ background: "none", border: "none", color: "#ef4444", padding: "4px 0 4px 8px" }}><Trash2 size={18}/></button>
+                <p style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: tx.type === "income" ? "#10b981" : TH.text }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
+                <button onClick={(e) => { e.stopPropagation(); deleteTx(tx); }} style={{ background: "none", border: "none", color: "#ef4444", padding: "4px 0 4px 8px", cursor:"pointer" }}><Trash2 size={18}/></button>
               </div>
             </div>
           );
@@ -538,7 +599,6 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
     if (debtForm.type === "lend") { if (ws[tIdx].balance < amt) return showToast(settings.lang==='bn'?"টাকা নেই":"No cash", "error"); ws[tIdx].balance -= amt; } else { ws[tIdx].balance += amt; }
     const tx = { id: genId(), type: debtForm.type === 'lend' ? 'expense' : 'income', date: debtForm.date, amount: amt, category: debtForm.type === 'lend' ? 'other_ex' : 'other_in', walletId: debtForm.sourceId, note: `${debtForm.type==='lend'?'ধার:':'ঋণ:'} ${debtForm.person}`, tags:[] };
     setData({ ...data, wallets: ws, txs: [tx, ...data.txs], debts: [{...debtForm, id: genId(), amount: amt}, ...data.debts] });
-   
     setDebtForm({ show: false, person: "", amount: "", type: "lend", date: TODAY(), returnDate: "", note: "", sourceId: "w1" }); showToast(settings.lang==='bn'?"সংরক্ষিত":"Saved", "success");
   };
 
@@ -548,13 +608,12 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
     setData({ ...data, wallets: walletForm.id ? data.wallets.map(w=>w.id===walletForm.id?nw:w) : [...data.wallets, nw] });
     setWalletForm({ show: false, name: "", balance: "", icon: "💳", id: null });
   };
- const sendReminder = (debt) => {
-    const msg = settings.lang === 'bn' 
-      ? `ভাই ${debt.person}, আপনার কাছে আমার ${debt.amount}৳ পাওয়া ছিল। সময় করে পাঠিয়ে দিলে খুব উপকার হতো। ধন্যবাদ!`
-      : `Hey ${debt.person}, just a friendly reminder about the ${debt.amount} BDT. Please send it over when you can. Thanks!`;
-    
+  
+  const sendReminder = (debt) => {
+    const msg = settings.lang === 'bn' ? `ভাই ${debt.person}, আপনার কাছে আমার ${debt.amount}৳ পাওয়া ছিল। সময় করে পাঠিয়ে দিলে খুব উপকার হতো। ধন্যবাদ!` : `Hey ${debt.person}, just a friendly reminder about the ${debt.amount} BDT. Please send it over when you can. Thanks!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
+  
   const deleteWalletSafe = (w) => {
     if(data.wallets.length === 1) return showToast(settings.lang==='bn'?"কমপক্ষে ১টি ওয়ালেট থাকতে হবে":"Need 1 wallet minimum", "error");
     const hasTxs = data.txs.some(t => t.walletId === w.id);
@@ -581,15 +640,15 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <h3 style={{ fontWeight: 700, fontSize:16, color: TH.textMid }}>{settings.lang==='bn'?'ওয়ালেট':'WALLETS'}</h3>
+        <h3 style={{ fontWeight: 700, fontSize:14, color: TH.textMid, letterSpacing:1 }}>{settings.lang==='bn'?'ওয়ালেট':'WALLETS'}</h3>
         <div style={{ display: "flex", gap: 8 }}>
-           <button onClick={()=>setTransferForm({...transferForm, show:!transferForm.show})} style={{ padding: "8px 14px", borderRadius: 12, background: TH.bgCard, color: TH.text, border: `1px solid ${TH.border}`, fontWeight: 700, fontSize:13 }}><ArrowRightLeft size={14} style={{marginBottom:-2}}/> Transfer</button>
-           <button onClick={()=>setWalletForm({...walletForm, show:true})} style={{ padding: "8px 14px", borderRadius: 12, background: TH.primary, color: "#000", border: "none", fontWeight: 800, fontSize:13 }}>+ Add</button>
+           <button onClick={()=>setTransferForm({...transferForm, show:!transferForm.show})} className="glass-panel" style={{ padding: "8px 14px", borderRadius: 12, color: TH.text, fontWeight: 700, fontSize:13, cursor:"pointer" }}><ArrowRightLeft size={14} style={{marginBottom:-2}}/> Transfer</button>
+           <button onClick={()=>setWalletForm({...walletForm, show:true})} className="premium-btn" style={{ padding: "8px 14px", borderRadius: 12, fontSize:13 }}>+ Add</button>
         </div>
       </div>
       
       {transferForm.show && (
-         <div className="animate-scale" style={{ padding: 20, background: TH.bgCard, borderRadius: 24, display: "flex", flexDirection: "column", gap: 12, border: "1px solid rgba(16,185,129,0.3)" }}>
+         <div className="animate-scale glass-panel" style={{ padding: 20, borderRadius: 24, display: "flex", flexDirection: "column", gap: 12 }}>
            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
              <select value={transferForm.from} onChange={e=>setTransferForm({...transferForm, from: e.target.value})} style={{ flex:1, padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, outline:"none", fontWeight:600, fontSize:14 }}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
              <span style={{fontSize: 16}}>➡️</span>
@@ -597,45 +656,46 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
            </div>
            <input type="number" placeholder={settings.lang==='bn'?'টাকার পরিমাণ':'Amount'} value={transferForm.amount} onChange={e=>setTransferForm({...transferForm, amount: e.target.value})} style={{ padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, outline:"none", fontWeight:600, fontSize:14 }} />
            <input type="text" placeholder={settings.lang==='bn'?'নোট (ঐচ্ছিক)':'Note (Optional)'} value={transferForm.note} onChange={e=>setTransferForm({...transferForm, note: e.target.value})} style={{ padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, outline:"none", fontWeight:600, fontSize:14 }} />
-           <button onClick={handleTransfer} style={{ padding: 14, background: "#10b981", color: "#fff", border: "none", borderRadius: 14, fontWeight: 800, fontSize: 14 }}>{settings.lang==='bn'?'ট্রান্সফার করুন':'Transfer Now'}</button>
+           <button onClick={handleTransfer} className="premium-btn" style={{ padding: 14, borderRadius: 14, fontSize: 14 }}>{settings.lang==='bn'?'ট্রান্সফার করুন':'Transfer Now'}</button>
          </div>
       )}
 
       {walletForm.show && (
-         <div className="animate-scale" style={{ padding: 20, background: TH.bgCard, borderRadius: 24, display: "flex", flexDirection: "column", gap: 12, border: `1px solid ${TH.primary}` }}>
+         <div className="animate-scale glass-panel" style={{ padding: 20, borderRadius: 24, display: "flex", flexDirection: "column", gap: 12 }}>
            <div style={{ display:"flex", gap:10 }}>
              <input type="text" placeholder="Icon" value={walletForm.icon} onChange={e=>setWalletForm({...walletForm, icon: e.target.value})} style={{ width:55, padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, textAlign:"center", outline:"none", fontSize:18 }} />
              <input type="text" placeholder="Wallet Name" value={walletForm.name} onChange={e=>setWalletForm({...walletForm, name: e.target.value})} style={{ flex:1, padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, outline:"none", fontWeight:600, fontSize:14 }} />
            </div>
            <input type="number" placeholder="Initial Balance" value={walletForm.balance} onChange={e=>setWalletForm({...walletForm, balance: e.target.value})} style={{ padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, outline:"none", fontWeight:600, fontSize:14 }} />
            <div style={{ display:"flex", gap:10 }}>
-             <button onClick={handleWalletSave} style={{ flex:1, padding: 14, background: TH.primary, color: "#000", border: "none", borderRadius: 14, fontWeight: 800, fontSize:14 }}>Save</button>
-             <button onClick={()=>setWalletForm({ show: false, name: "", balance: "", icon: "💳", id: null })} style={{ flex:1, padding: 14, background: TH.bgInner, color: TH.textMid, border: "none", borderRadius: 14, fontWeight: 800, fontSize:14 }}>Cancel</button>
+             <button onClick={handleWalletSave} className="premium-btn" style={{ flex:1, padding: 14, borderRadius: 14, fontSize:14 }}>Save</button>
+             <button onClick={()=>setWalletForm({ show: false, name: "", balance: "", icon: "💳", id: null })} style={{ flex:1, padding: 14, background: TH.bgInner, color: TH.textMid, border: "none", borderRadius: 14, fontWeight: 800, fontSize:14, cursor:"pointer" }}>Cancel</button>
            </div>
          </div>
       )}
       
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {data.wallets.map(w => (
-          <div key={w.id} className="tx-card" style={{ padding: "20px", background: TH.bgCard, borderRadius: 24, border: `1px solid ${TH.border}`, position:"relative" }}>
-            <div style={{ position:"absolute", top:14, right:14, display:"flex", gap:8 }}>
-              <button onClick={()=>setWalletForm({show:true, ...w})} style={{background:"none", border:"none", color:TH.textMid}}><Edit size={16}/></button>
-              <button onClick={()=>deleteWalletSafe(w)} style={{background:"none", border:"none", color:"#ef4444"}}><Trash2 size={16}/></button>
+          <div key={w.id} className="tx-card glass-panel" style={{ padding: "20px", borderRadius: 20, position:"relative", overflow: "hidden" }}>
+            <div style={{ position:"absolute", top:-20, right:-20, width:60, height:60, background:"var(--gold-primary)", opacity:0.1, filter:"blur(20px)", borderRadius:"50%" }}></div>
+            <div style={{ position:"absolute", top:14, right:14, display:"flex", gap:8, zIndex:1 }}>
+              <button onClick={()=>setWalletForm({show:true, ...w})} style={{background:"none", border:"none", color:TH.textMid, cursor:"pointer"}}><Edit size={16}/></button>
+              <button onClick={()=>deleteWalletSafe(w)} style={{background:"none", border:"none", color:"#ef4444", cursor:"pointer"}}><Trash2 size={16}/></button>
             </div>
-            <span style={{ fontSize: 28 }}>{w.icon}</span>
-            <p style={{ fontSize: 13, fontWeight: 600, color: TH.textMid, marginTop: 10 }}>{w.name}</p>
-            <p style={{ fontSize: 18, fontWeight: 800, marginTop: 2, color: TH.text }}>{fmt(w.balance)}</p>
+            <span style={{ fontSize: 26, zIndex:1, position:"relative" }}>{w.icon}</span>
+            <p style={{ fontSize: 12, fontWeight: 600, color: TH.textMid, marginTop: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>{w.name}</p>
+            <p style={{ fontFamily: 'Syne', fontSize: 18, fontWeight: 800, marginTop: 2, color: TH.text, zIndex:1, position:"relative" }}>{fmt(w.balance)}</p>
           </div>
         ))}
       </div>
 
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:10 }}>
-        <h3 style={{ fontWeight: 700, fontSize:16, color: TH.textMid }}>{settings.lang==='bn'?'ধার-দেনা':'DEBTS'}</h3>
-        <button onClick={()=>setDebtForm({...debtForm, show: !debtForm.show})} style={{ padding: "8px 14px", borderRadius: 12, background: TH.bgCard, color: TH.text, border: `1px solid ${TH.border}`, fontWeight: 700, fontSize:13 }}>+ {settings.lang==='bn'?'নতুন':'New'}</button>
+        <h3 style={{ fontWeight: 700, fontSize:14, color: TH.textMid, letterSpacing:1 }}>{settings.lang==='bn'?'ধার-দেনা':'DEBTS'}</h3>
+        <button onClick={()=>setDebtForm({...debtForm, show: !debtForm.show})} className="glass-panel" style={{ padding: "8px 14px", borderRadius: 12, color: TH.text, fontWeight: 700, border:"none", fontSize:13, cursor:"pointer" }}>+ {settings.lang==='bn'?'নতুন':'New'}</button>
       </div>
       
       {debtForm.show && (
-          <div className="animate-scale" style={{ padding: 20, background: TH.bgCard, borderRadius: 24, display: "flex", flexDirection: "column", gap: 12, border: `1px solid ${TH.primary}` }}>
+          <div className="animate-scale glass-panel" style={{ padding: 20, borderRadius: 24, display: "flex", flexDirection: "column", gap: 12 }}>
             <input type="text" placeholder={settings.lang==='bn'?'নাম':'Name'} value={debtForm.person} onChange={e=>setDebtForm({...debtForm, person: e.target.value})} style={{ padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 600, outline:"none", fontSize:14 }} />
             <input type="number" placeholder={settings.lang==='bn'?'টাকা':'Amount'} value={debtForm.amount} onChange={e=>setDebtForm({...debtForm, amount: e.target.value})} style={{ padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 600, outline:"none", fontSize:14 }} />
             <div style={{display:"flex", gap:10}}>
@@ -652,29 +712,25 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
                <select value={debtForm.sourceId} onChange={e=>setDebtForm({...debtForm, sourceId: e.target.value})} style={{ flex:1, padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 700, outline:"none", fontSize:13 }}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}</select>
                <select value={debtForm.type} onChange={e=>setDebtForm({...debtForm, type: e.target.value})} style={{ flex:1, padding: 14, borderRadius: 14, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 700, outline:"none", fontSize:13 }}><option value="lend">I will get</option><option value="borrow">I will give</option></select>
             </div>
-            <button onClick={handleAddDebt} style={{ padding: 14, background: TH.primary, color: "#000", border: "none", borderRadius: 14, fontWeight: 800, fontSize:14 }}>Save</button>
+            <button onClick={handleAddDebt} className="premium-btn" style={{ padding: 14, borderRadius: 14, fontSize:14 }}>Save</button>
           </div>
       )}
       
       {data.debts.map(d => (
-        <div key={d.id} className="tx-card" style={{ padding: 18, background: TH.bgCard, borderRadius: 24, display: "flex", justifyContent: "space-between", alignItems: "center", border: `1px solid ${TH.border}` }}>
+        <div key={d.id} className="tx-card glass-panel" style={{ padding: 16, borderRadius: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            <div style={{ width:42, height:42, borderRadius:14, background: d.type==='lend'?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', display:"flex", alignItems:"center", justifyContent:"center" }}><Users size={20} color={d.type==='lend'?'#10b981':'#ef4444'}/></div>
+            <div style={{ width:42, height:42, borderRadius:12, background: d.type==='lend'?'rgba(16,185,129,0.15)':'rgba(239,68,68,0.15)', display:"flex", alignItems:"center", justifyContent:"center" }}><Users size={20} color={d.type==='lend'?'#10b981':'#ef4444'}/></div>
             <div>
               <p style={{ fontWeight: 700, fontSize:15, color:TH.text, marginBottom:2 }}>{d.person}</p>
               <p style={{ fontSize: 11, color: TH.textMid, fontWeight:600 }}>{settings.lang==='bn'?'ফেরত:':'Return:'} {d.returnDate ? formatDate(d.returnDate) : 'N/A'}</p>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <p style={{ fontWeight: 800, fontSize:16, color: TH.text }}>{fmt(d.amount)}</p>
-            <button 
-  onClick={(e) => { e.stopPropagation(); sendReminder(d); }} style={{ color: "#25D366", display: "flex", alignItems: "center", gap: 4, background: "none" ,     border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 
-  }}
->
-  <MessageCircle size={16} />
-  {settings.lang === 'bn' ? 'রিমাইন্ড' : 'Remind'}
-</button>
-            <button onClick={()=>{ setConfirmDialog({ show: true, msg: settings.lang==='bn'?"হিসাব ক্লিয়ার করবেন?":"Settle this debt?", onConfirm: () => { const ws = data.wallets.map(w => w.id === d.sourceId ? { ...w, balance: d.type==='lend'? w.balance+d.amount : w.balance-d.amount } : w); setData({...data, wallets: ws, debts: data.debts.filter(x=>x.id!==d.id)}); showToast(settings.lang==='bn'?"ক্লিয়ার!":"Settled!", "success"); }}); }} style={{ padding: "8px 12px", background: TH.bgInner, color: TH.text, borderRadius: 10, border: `1px solid ${TH.border}`, fontWeight: 700, fontSize: 12 }}>Settle</button>
+            <p style={{ fontFamily: 'Syne', fontWeight: 800, fontSize:15, color: TH.text }}>{fmt(d.amount)}</p>
+            <button onClick={(e) => { e.stopPropagation(); sendReminder(d); }} style={{ color: "#25D366", display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+              <MessageCircle size={16} />
+            </button>
+            <button onClick={()=>{ setConfirmDialog({ show: true, msg: settings.lang==='bn'?"হিসাব ক্লিয়ার করবেন?":"Settle this debt?", onConfirm: () => { const ws = data.wallets.map(w => w.id === d.sourceId ? { ...w, balance: d.type==='lend'? w.balance+d.amount : w.balance-d.amount } : w); setData({...data, wallets: ws, debts: data.debts.filter(x=>x.id!==d.id)}); showToast(settings.lang==='bn'?"ক্লিয়ার!":"Settled!", "success"); }}); }} style={{ padding: "6px 12px", background: TH.bgInner, color: TH.textMid, borderRadius: 10, border: `1px solid ${TH.border}`, fontWeight: 700, fontSize: 11, cursor:"pointer" }}>Settle</button>
           </div>
         </div>
       ))}
@@ -707,25 +763,26 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", background: TH.bgCard, padding: 6, borderRadius: 20, border: `1px solid ${TH.border}` }}>
+      <div className="glass-panel" style={{ display: "flex", padding: 6, borderRadius: 20 }}>
         {['vault', 'goals', 'budgets'].map(t => (
-          <button key={t} onClick={()=>setSubTab(t)} style={{ flex: 1, padding: "12px", borderRadius: 16, background: subTab===t ? TH.bgInner : "transparent", color: subTab===t ? TH.text : TH.textMid, fontWeight: 700, border: "none", fontSize: 13, textTransform:"uppercase", transition: "0.3s" }}>{t}</button>
+          <button key={t} onClick={()=>setSubTab(t)} style={{ flex: 1, padding: "12px", borderRadius: 16, background: subTab===t ? "var(--gold-bg)" : "transparent", color: subTab===t ? "var(--gold-primary)" : TH.textMid, fontWeight: 700, border: "none", fontSize: 13, textTransform:"uppercase", transition: "0.3s", cursor:"pointer" }}>{t}</button>
         ))}
       </div>
       
       {subTab === "vault" && (
         <div className="animate-slide" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div className="animate-scale" style={{ padding: 40, background: TH.bgCard, borderRadius: 32, textAlign: "center", border: `1px solid ${TH.border}` }}>
-            <Landmark size={36} style={{margin:"0 auto 15px", color:TH.primary}}/>
-            <p style={{ fontWeight: 700, color: TH.textMid, letterSpacing:1, fontSize:12 }}>SAVINGS VAULT</p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, margin:"10px 0 25px", color: TH.text }}>{fmt(data.savings.balance)}</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="animate-scale glass-panel" style={{ padding: 40, borderRadius: 32, textAlign: "center", position: "relative", overflow: "hidden", boxShadow: `0 15px 40px rgba(0,0,0,0.2)` }}>
+            <div style={{ position: "absolute", top: -60, right: -60, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, var(--gold-glow) 0%, transparent 70%)" }}/>
+            <Landmark size={36} style={{margin:"0 auto 15px", color:TH.primary, position:"relative", zIndex:1}}/>
+            <p style={{ fontWeight: 700, color: TH.textMid, letterSpacing:1.5, fontSize:10, position:"relative", zIndex:1 }}>SAVINGS VAULT</p>
+            <h2 style={{ fontFamily: 'Syne', fontSize: 42, fontWeight: 800, margin:"10px 0 25px", color: TH.text, position:"relative", zIndex:1 }}>{fmt(data.savings.balance)}</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, position:"relative", zIndex:1 }}>
               <select value={vaultWallet} onChange={e=>setVaultWallet(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 700, outline:"none", fontSize:14 }}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
               <input type="number" placeholder="Amount" value={saveAmt} onChange={e=>setSaveAmt(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, textAlign:"center", outline:"none", fontWeight:700, fontSize:16 }} />
               <input type="text" placeholder="Note (Optional)" value={saveNote} onChange={e=>setSaveNote(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, textAlign:"center", outline:"none", fontWeight:600, fontSize:14 }} />
               <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                <button onClick={()=>handleVault('deposit')} style={{ flex: 1, padding: 14, background: "#10b981", color: "#fff", border: "none", borderRadius: 16, fontWeight: 800, fontSize:14 }}>Deposit</button>
-                <button onClick={()=>handleVault('withdraw')} style={{ flex: 1, padding: 14, background: TH.bgInner, color: TH.text, border: `1px solid ${TH.border}`, borderRadius: 16, fontWeight: 800, fontSize:14 }}>Withdraw</button>
+                <button onClick={()=>handleVault('deposit')} className="premium-btn" style={{ flex: 1, padding: 14, borderRadius: 16, fontSize:14 }}>Deposit</button>
+                <button onClick={()=>handleVault('withdraw')} style={{ flex: 1, padding: 14, background: TH.bgInner, color: TH.text, border: `1px solid ${TH.border}`, borderRadius: 16, fontWeight: 800, fontSize:14, cursor:"pointer" }}>Withdraw</button>
               </div>
             </div>
           </div>
@@ -735,13 +792,13 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
               <p style={{ fontWeight: 700, marginBottom: 12, color: TH.textMid, fontSize: 13, textTransform: "uppercase" }}>{settings.lang==='bn'?'সাম্প্রতিক হিস্ট্রি':'Recent History'}</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {data.savings.history.map(sv => (
-                  <div key={sv.id} className="tx-card" style={{ padding: "16px 20px", background: TH.bgCard, borderRadius: 20, border: `1px solid ${TH.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div key={sv.id} className="tx-card glass-panel" style={{ padding: "16px 20px", borderRadius: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ textAlign: "left" }}>
                        <p style={{ fontWeight: 700, fontSize: 15, color: TH.text }}>{sv.note}</p>
                        <p style={{ fontSize: 12, color: TH.textMid, fontWeight: 500 }}>{formatDate(sv.date)}</p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                       <p style={{ fontWeight: 800, fontSize: 16, color: sv.type === 'deposit' ? "#10b981" : "#ef4444" }}>{sv.type === 'deposit' ? "+" : "-"}{fmt(sv.amount)}</p>
+                       <p style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 16, color: sv.type === 'deposit' ? "#10b981" : "#ef4444" }}>{sv.type === 'deposit' ? "+" : "-"}{fmt(sv.amount)}</p>
                        <button onClick={() => {
                           setConfirmDialog({ show: true, msg: settings.lang==='bn'?"এই হিস্ট্রি মুছবেন?":"Delete this record?", onConfirm: () => {
                              let svNew = { ...data.savings };
@@ -758,7 +815,7 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
                              setData({ ...data, savings: svNew, wallets: newWs, txs: newTxs });
                              showToast(settings.lang==='bn'?"মুছে ফেলা হয়েছে":"Deleted", "success");
                           }});
-                       }} style={{ background: "none", border: "none", color: "#ef4444", padding: "4px 0 4px 8px" }}><Trash2 size={18}/></button>
+                       }} style={{ background: "none", border: "none", color: "#ef4444", padding: "4px 0 4px 8px", cursor:"pointer" }}><Trash2 size={18}/></button>
                     </div>
                   </div>
                 ))}
@@ -770,32 +827,38 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
       
       {subTab === "goals" && (
         <div className="animate-slide" style={{ display:"flex", flexDirection:"column", gap:16 }}>
-          <button onClick={()=>setGoalForm({...goalForm, show: true})} style={{ padding:18, background:TH.bgCard, borderRadius:20, border:`1px dashed ${TH.textMid}`, color:TH.text, fontWeight:700, fontSize:14 }}>+ {settings.lang==='bn'?'নতুন লক্ষ্য':'New Goal'}</button>
+          {!goalForm.show && (
+            <button onClick={()=>setGoalForm({...goalForm, show: true})} style={{ padding:18, background:"var(--gold-bg)", borderRadius:20, border:`1px dashed var(--gold-primary)`, color:"var(--gold-primary)", fontWeight:700, fontSize:14, cursor:"pointer" }}>+ {settings.lang==='bn'?'নতুন লক্ষ্য':'New Goal'}</button>
+          )}
           
           {goalForm.show && (
-            <div className="animate-scale" style={{ padding:20, background:TH.bgCard, borderRadius:24, display:"flex", flexDirection:"column", gap:12, border:`1px solid ${TH.primary}` }}>
+            <div className="animate-scale glass-panel" style={{ padding:20, borderRadius:24, display:"flex", flexDirection:"column", gap:12, border:`1px solid var(--gold-primary)` }}>
               <input type="text" placeholder={settings.lang==='bn'?'নাম':'Name'} value={goalForm.name} onChange={e=>setGoalForm({...goalForm, name: e.target.value})} style={{ padding:14, borderRadius:14, background:TH.bgInner, color:TH.text, border:"none", outline:"none", fontWeight:600, fontSize:14 }} />
               <input type="number" placeholder={settings.lang==='bn'?'টার্গেট':'Target Amount'} value={goalForm.target} onChange={e=>setGoalForm({...goalForm, target: e.target.value})} style={{ padding:14, borderRadius:14, background:TH.bgInner, color:TH.text, border:"none", outline:"none", fontWeight:600, fontSize:14 }} />
-              <button onClick={()=>{ 
-                if(!goalForm.name || !goalForm.target) return showToast("Enter info", "error"); 
-                const newGoal = { id: goalForm.id || genId(), name: goalForm.name, target: Number(goalForm.target), note: goalForm.note, saved: goalForm.saved || 0 }; 
-                setData({ ...data, goals: goalForm.id ? data.goals.map(g=>g.id===goalForm.id?newGoal:g) : [newGoal, ...data.goals] }); 
-                setGoalForm({ show: false, name: "", target: "", note: "", id: null }); 
-              }} style={{ padding:14, background:TH.primary, color:"#000", border:"none", borderRadius:14, fontWeight:800, fontSize:14 }}>Save Goal</button>
+              
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={()=>{ 
+                  if(!goalForm.name || !goalForm.target) return showToast("Enter info", "error"); 
+                  const newGoal = { id: goalForm.id || genId(), name: goalForm.name, target: Number(goalForm.target), note: goalForm.note, saved: goalForm.saved || 0 }; 
+                  setData({ ...data, goals: goalForm.id ? data.goals.map(g=>g.id===goalForm.id?newGoal:g) : [newGoal, ...data.goals] }); 
+                  setGoalForm({ show: false, name: "", target: "", note: "", id: null }); 
+                }} className="premium-btn" style={{ flex: 1, padding:14, borderRadius:14, fontSize:14 }}>Save Goal</button>
+                <button onClick={()=>setGoalForm({ show: false, name: "", target: "", note: "", id: null })} style={{ flex: 1, padding: 14, background: TH.bgInner, color: TH.textMid, border: "none", borderRadius: 14, fontWeight: 800, fontSize:14, cursor:"pointer" }}>Cancel</button>
+              </div>
             </div>
           )}
 
           {data.goals.map(g => (
-            <div key={g.id} className="tx-card" style={{ padding:24, background:TH.bgCard, borderRadius:28, border:`1px solid ${TH.border}` }}>
+            <div key={g.id} className="tx-card glass-panel" style={{ padding:24, borderRadius:28 }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:15 }}>
                 <h4 style={{ fontWeight:700, fontSize:16, color:TH.text }}>🎯 {g.name}</h4>
                 <div style={{ display:"flex", gap:10 }}>
-                  <button onClick={()=>setGoalForm({show:true, ...g})} style={{ color:TH.textMid, background:"none", border:"none" }}><Edit3 size={18}/></button>
-                  <button onClick={()=>setConfirmDialog({show:true, msg:"Delete Goal?", onConfirm:()=>setData({...data, goals: data.goals.filter(x=>x.id!==g.id)})})} style={{ color:"#ef4444", background:"none", border:"none" }}><Trash2 size={18}/></button>
+                  <button onClick={()=>setGoalForm({show:true, ...g})} style={{ color:TH.textMid, background:"none", border:"none", cursor:"pointer" }}><Edit3 size={18}/></button>
+                  <button onClick={()=>setConfirmDialog({show:true, msg:"Delete Goal?", onConfirm:()=>setData({...data, goals: data.goals.filter(x=>x.id!==g.id)})})} style={{ color:"#ef4444", background:"none", border:"none", cursor:"pointer" }}><Trash2 size={18}/></button>
                 </div>
               </div>
               <div style={{ height:12, background:TH.bgInner, borderRadius:10, overflow:"hidden", marginBottom:10 }}>
-                <div style={{ width:`${Math.min((g.saved/g.target)*100, 100)}%`, height:"100%", background:TH.primary, transition:"width 1s cubic-bezier(0.4, 0, 0.2, 1)", borderRadius: 10 }} />
+                <div style={{ width:`${Math.min((g.saved/g.target)*100, 100)}%`, height:"100%", background:"var(--gold-primary)", transition:"width 1s cubic-bezier(0.4, 0, 0.2, 1)", borderRadius: 10 }} />
               </div>
               <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, fontWeight:700, marginBottom:20 }}>
                 <span style={{color:TH.text}}>{fmt(g.saved)}</span>
@@ -806,11 +869,11 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
                 <div className="animate-scale" style={{ display:"flex", gap:8 }}>
                   <select value={addCashWallet} onChange={e=>setAddCashWallet(e.target.value)} style={{ padding:12, borderRadius:12, background:TH.bgInner, border:"none", color:TH.text, outline:"none", flex:1, fontWeight:600, fontSize:13 }}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
                   <input type="number" placeholder="Amt" value={addCashAmt} onChange={e=>setAddCashAmt(e.target.value)} style={{ flex:1, padding:12, borderRadius:12, background:TH.bgInner, border:"none", color:TH.text, outline:"none", fontWeight:600, fontSize:13 }}/>
-                  <button onClick={()=>handleAddGoalCash(g.id)} style={{ padding:12, borderRadius:12, background:"#10b981", color:"#fff", border:"none", fontWeight:800 }}><Check size={16}/></button>
-                  <button onClick={()=>{setAddCashId(null); setAddCashAmt("");}} style={{ padding:12, borderRadius:12, background:TH.bgInner, color:TH.textMid, border:"none", fontWeight:800 }}><X size={16}/></button>
+                  <button onClick={()=>handleAddGoalCash(g.id)} className="premium-btn" style={{ padding:12, borderRadius:12 }}><Check size={16}/></button>
+                  <button onClick={()=>{setAddCashId(null); setAddCashAmt("");}} style={{ padding:12, borderRadius:12, background:TH.bgInner, color:TH.textMid, border:"none", fontWeight:800, cursor:"pointer" }}><X size={16}/></button>
                 </div>
               ) : (
-                <button onClick={()=>setAddCashId(g.id)} style={{ width:"100%", padding:14, borderRadius:14, background:TH.bgInner, color:TH.text, fontWeight:700, border:"none", fontSize:13 }}>Add Cash</button>
+                <button onClick={()=>setAddCashId(g.id)} style={{ width:"100%", padding:14, borderRadius:14, background:"var(--gold-bg)", color:"var(--gold-primary)", fontWeight:700, border:"1px dashed var(--gold-primary)", fontSize:13, cursor:"pointer" }}>Add Cash</button>
               )}
             </div>
           ))}
@@ -819,7 +882,7 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
       
       {subTab === "budgets" && (
         <div className="animate-slide" style={{ display:"flex", flexDirection:"column", gap:16 }}>
-          <div style={{ padding:24, background:TH.bgCard, borderRadius:28, border:`1px solid ${TH.border}` }}>
+          <div className="glass-panel" style={{ padding:24, borderRadius:28 }}>
             <p style={{ fontWeight:700, marginBottom:15, color:TH.textMid, fontSize:13, textTransform:"uppercase" }}>{settings.lang==='bn'?'বাজেট সেট করুন':'Set Limit'}</p>
             <div style={{ display:"flex", gap:10, marginBottom:15 }}>
               <select value={budgetCat} onChange={e=>setBudgetCat(e.target.value)} style={{ flex:1, padding:14, borderRadius:14, background:TH.bgInner, color:TH.text, border:"none", fontWeight:600, outline:"none", fontSize:14 }}>
@@ -828,25 +891,28 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
               </select>
               <input type="number" placeholder="Limit" value={limitVal} onChange={e=>setLimitVal(e.target.value)} style={{ width:100, padding:14, borderRadius:14, background:TH.bgInner, color:TH.text, border:"none", textAlign:"center", fontWeight:700, outline:"none", fontSize:14 }} />
             </div>
-            <button onClick={()=>{ const val=Number(limitVal); if(budgetCat && val){ setData({...data, budgets:{...data.budgets, [budgetCat]:val}}); setLimitVal(""); showToast("Updated", "success"); } }} style={{ width:"100%", padding:14, borderRadius:14, background:TH.primary, color:"#000", border:"none", fontWeight:800, fontSize:14 }}>Save Budget</button>
+            <button onClick={()=>{ const val=Number(limitVal); if(budgetCat && val){ setData({...data, budgets:{...data.budgets, [budgetCat]:val}}); setLimitVal(""); setBudgetCat(""); showToast("Updated", "success"); } }} className="premium-btn" style={{ width:"100%", padding:14, borderRadius:14, fontSize:14 }}>Save Budget</button>
           </div>
           
           {Object.entries(data.budgets).map(([id, lim]) => { 
             const cat = getCategories("expense").find(c => c.id === id); if(!cat) return null; 
-            const spent = data.txs.filter(x => x.type === "expense" && x.category === id && x.date.startsWith(TODAY().slice(0, 7))).reduce((s, e) => s + e.amount, 0); 
+            const spent = data.txs.filter(x => x.type === "expense" && x.category === id && x.date.startsWith(TODAY().slice(0, 7))).reduce((s, e) => s + Number(e.amount || 0), 0); 
             const percent = Math.min((spent / lim) * 100, 100); 
             const isOver = spent > lim; 
             return (
-              <div key={id} className="tx-card" style={{ padding:20, background:TH.bgCard, borderRadius:24, border:`1px solid ${isOver ? 'rgba(239,68,68,0.3)' : TH.border}`, display:"flex", flexDirection:"column", gap:12 }}>
+              <div key={id} className="tx-card glass-panel" style={{ padding:20, borderRadius:24, border:`1px solid ${isOver ? 'rgba(239,68,68,0.3)' : TH.border}`, display:"flex", flexDirection:"column", gap:12 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
                     <span style={{ fontSize:24 }}>{cat.icon}</span>
                     <div><p style={{ fontWeight:700, fontSize:15, color:TH.text }}>{cat.label[settings.lang] || cat.label['en']}</p><p style={{ fontSize:12, color:TH.textMid, fontWeight:600 }}>{fmt(spent)} / {fmt(lim)}</p></div>
                   </div>
-                  <button onClick={()=>setConfirmDialog({show:true, msg:"Delete Budget?", onConfirm:() => { const n={...data.budgets}; delete n[id]; setData({...data, budgets:n}); }})} style={{ color:TH.textMid, background:"none", border:"none" }}><Trash2 size={18}/></button>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => { setBudgetCat(id); setLimitVal(lim); window.scrollTo({top: 0, behavior: 'smooth'}); }} style={{ color:TH.textMid, background:"none", border:"none", cursor:"pointer" }}><Edit3 size={18}/></button>
+                    <button onClick={()=>setConfirmDialog({show:true, msg:"Delete Budget?", onConfirm:() => { const n={...data.budgets}; delete n[id]; setData({...data, budgets:n}); }})} style={{ color:"#ef4444", background:"none", border:"none", cursor:"pointer" }}><Trash2 size={18}/></button>
+                  </div>
                 </div>
                 <div style={{ height:8, background:TH.bgInner, borderRadius:10, overflow:"hidden", marginTop:2 }}>
-                  <div style={{ width:`${percent}%`, height:"100%", background: isOver ? "#ef4444" : TH.primary, transition:"width 1s ease", borderRadius: 10 }} />
+                  <div style={{ width:`${percent}%`, height:"100%", background: isOver ? "#ef4444" : "var(--gold-primary)", transition:"width 1s ease", borderRadius: 10 }} />
                 </div>
               </div>
             ); 
@@ -862,57 +928,73 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
   
   const weeklyData = useMemo(() => Array.from({length: 7}).map((_, i) => { 
     const d = new Date(); d.setDate(d.getDate() - (6 - i)); const s = d.toISOString().split('T')[0]; 
-    const inc = data.txs.filter(t => t.type === "income" && t.date === s).reduce((sum, t) => sum + t.amount, 0); 
-    const exp = data.txs.filter(t => t.type === "expense" && t.date === s).reduce((sum, t) => sum + t.amount, 0); 
+    const inc = data.txs.filter(t => t.type === "income" && t.date === s).reduce((sum, t) => sum + Number(t.amount || 0), 0); 
+    const exp = data.txs.filter(t => t.type === "expense" && t.date === s).reduce((sum, t) => sum + Number(t.amount || 0), 0); 
     return { name: d.toLocaleDateString(lang==='bn'?'bn-BD':'en-US', {weekday:'short'}), income: inc, expense: exp }; 
   }), [data.txs, lang]);
   
   const monthlyData = useMemo(() => ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, i) => { 
     const y = new Date().getFullYear(); const mStr = `${y}-${String(i+1).padStart(2, '0')}`; 
-    const inc = data.txs.filter(t => t.type === "income" && t.date.startsWith(mStr)).reduce((s, t) => s + t.amount, 0); 
-    const exp = data.txs.filter(t => t.type === "expense" && t.date.startsWith(mStr)).reduce((s, t) => s + t.amount, 0); 
+    const inc = data.txs.filter(t => t.type === "income" && t.date.startsWith(mStr)).reduce((s, t) => s + Number(t.amount || 0), 0); 
+    const exp = data.txs.filter(t => t.type === "expense" && t.date.startsWith(mStr)).reduce((s, t) => s + Number(t.amount || 0), 0); 
     return { name: m, income: inc, expense: exp }; 
   }), [data.txs]);
 
-  const totalWalletBalance = data.wallets.reduce((s, w) => s + w.balance, 0);
-  const totalLent = data.debts.filter(d => d.type === 'lend').reduce((s, d) => s + d.amount, 0);
-  const totalBorrowed = data.debts.filter(d => d.type === 'borrow').reduce((s, d) => s + d.amount, 0);
-  const totalAssets = totalWalletBalance + totalLent;
-  const totalLiabilities = totalBorrowed;
+  const positiveWallets = (data.wallets || []).filter(w => Number(w.balance) > 0).reduce((s, w) => s + Number(w.balance), 0);
+  const negativeWallets = (data.wallets || []).filter(w => Number(w.balance) < 0).reduce((s, w) => s + Math.abs(Number(w.balance)), 0);
+
+  const totalLent = (data.debts || []).filter(d => d.type !== 'borrow').reduce((s, d) => s + Number(d.amount || 0), 0);
+  const totalBorrowed = (data.debts || []).filter(d => d.type === 'borrow').reduce((s, d) => s + Number(d.amount || 0), 0);
+
+  const totalAssets = positiveWallets + totalLent;
+  const totalLiabilities = totalBorrowed + negativeWallets;
   const netWorth = totalAssets - totalLiabilities;
+
+  const totalIncAllTime = (data.txs || []).filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0);
+  const totalExpAllTime = (data.txs || []).filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0);
   
   return (
     <div className="animate-slide" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", background: TH.bgCard, padding: 6, borderRadius: 20, border: `1px solid ${TH.border}` }}>
+      <div className="glass-panel" style={{ display: "flex", padding: 6, borderRadius: 20 }}>
         {['breakdown', 'weekly', 'monthly', 'net worth'].map(t => (
-          <button key={t} onClick={()=>setGType(t)} style={{ flex: 1, padding: "12px 2px", borderRadius: 16, background: gType===t ? TH.bgInner : "transparent", color: gType===t ? TH.text : TH.textMid, fontWeight: 700, border: "none", fontSize: 11, textTransform:"uppercase", transition: "0.3s" }}>{t}</button>
+          <button key={t} onClick={()=>setGType(t)} style={{ flex: 1, padding: "12px 2px", borderRadius: 16, background: gType===t ? "var(--gold-bg)" : "transparent", color: gType===t ? "var(--gold-primary)" : TH.textMid, fontWeight: 700, border: "none", fontSize: 11, textTransform:"uppercase", transition: "0.3s", cursor:"pointer" }}>{t}</button>
         ))}
       </div>
       
       {gType === 'net worth' ? (
          <div className="animate-scale" style={{ display:"flex", flexDirection:"column", gap:14 }}>
             <div style={{ display:"flex", gap:14 }}>
-               <div style={{ flex:1, padding:20, background:TH.bgCard, borderRadius:24, border:`1px solid rgba(16,185,129,0.3)` }}>
+               <div className="glass-panel" style={{ flex:1, padding:20, borderRadius:24, border:`1px solid rgba(16,185,129,0.3)` }}>
                   <p style={{fontSize:12, fontWeight:700, color:"#10b981"}}>{lang==='bn'?'মোট সম্পদ':'Total Assets'}</p>
-                  <p style={{fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalAssets)}</p>
+                  <p style={{fontFamily: 'Syne', fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalAssets)}</p>
                </div>
-               <div style={{ flex:1, padding:20, background:TH.bgCard, borderRadius:24, border:`1px solid rgba(239,68,68,0.3)` }}>
-                  <p style={{fontSize:12, fontWeight:700, color:"#ef4444"}}>{lang==='bn'?'মোট দায়':'Total Liabilities'}</p>
-                  <p style={{fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalLiabilities)}</p>
+               <div className="glass-panel" style={{ flex:1, padding:20, borderRadius:24, border:`1px solid rgba(239,68,68,0.3)` }}>
+                  <p style={{fontSize:12, fontWeight:700, color:"#ef4444"}}>{lang==='bn'?'মোট দায়':'Liabilities'}</p>
+                  <p style={{fontFamily: 'Syne', fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalLiabilities)}</p>
                </div>
             </div>
-            <div style={{ padding:35, background:TH.bgCard, borderRadius:28, textAlign:"center", border:`1px solid ${TH.border}`, position:"relative", overflow:"hidden" }}>
+            <div style={{ display:"flex", gap:14 }}>
+               <div className="glass-panel" style={{ flex:1, padding:16, borderRadius:20, border:`1px solid rgba(59,130,246,0.3)` }}>
+                  <p style={{fontSize:11, fontWeight:700, color:"#3b82f6"}}>{lang==='bn'?'মোট আয় (সব মিলিয়ে)':'Total Income'}</p>
+                  <p style={{fontFamily: 'Syne', fontSize:16, fontWeight:800, marginTop:4, color:TH.text}}>{fmt(totalIncAllTime)}</p>
+               </div>
+               <div className="glass-panel" style={{ flex:1, padding:16, borderRadius:20, border:`1px solid rgba(245,158,11,0.3)` }}>
+                  <p style={{fontSize:11, fontWeight:700, color:"#f59e0b"}}>{lang==='bn'?'মোট খরচ (সব মিলিয়ে)':'Total Expense'}</p>
+                  <p style={{fontFamily: 'Syne', fontSize:16, fontWeight:800, marginTop:4, color:TH.text}}>{fmt(totalExpAllTime)}</p>
+               </div>
+            </div>
+            <div className="glass-panel" style={{ padding:30, borderRadius:28, textAlign:"center", position:"relative", overflow:"hidden" }}>
                <p style={{fontSize:13, fontWeight:700, color:TH.textMid}}>{lang==='bn'?'নেট ওয়ার্থ (আসল সম্পদ)':'Net Worth'}</p>
-               <h2 style={{fontSize:40, fontWeight:800, margin:"10px 0", color: netWorth >= 0 ? "#10b981" : "#ef4444"}}>{fmt(netWorth)}</h2>
+               <h2 style={{fontFamily: 'Syne', fontSize:36, fontWeight:800, margin:"10px 0", color: netWorth >= 0 ? "#10b981" : "#ef4444"}}>{fmt(netWorth)}</h2>
                <p style={{fontSize:11, fontWeight:600, color:TH.textMid}}>{lang==='bn'?'সম্পদ - দায় = আসল মূল্য':'Assets - Liabilities'}</p>
             </div>
          </div>
       ) : (
-        <div style={{ padding: 20, background: TH.bgCard, borderRadius: 28, border: `1px solid ${TH.border}`, minHeight: 400 }}>
+        <div className="glass-panel" style={{ padding: 20, borderRadius: 28, minHeight: 400 }}>
           {gType === "breakdown" ? (
             <ResponsiveContainer width="100%" height={360}>
               <PieChart>
-                <Pie data={getCategories("expense").map(cat => ({ name: cat.label[lang] || cat.label['en'], value: data.txs.filter(x=>x.type==="expense" && x.category===cat.id).reduce((s,e)=>s+e.amount,0), color: cat.color })).filter(x=>x.value>0)} innerRadius={80} outerRadius={110} paddingAngle={5} dataKey="value" stroke="none">
+                <Pie data={getCategories("expense").map(cat => ({ name: cat.label[lang] || cat.label['en'], value: data.txs.filter(x=>x.type==="expense" && x.category===cat.id).reduce((s,e)=>s+Number(e.amount||0),0), color: cat.color })).filter(x=>x.value>0)} innerRadius={80} outerRadius={110} paddingAngle={5} dataKey="value" stroke="none">
                   {getCategories("expense").map((e,i)=><Cell key={i} fill={e.color}/>)}
                 </Pie>
                 <Tooltip formatter={v=>fmt(v)} contentStyle={{borderRadius: 16, border:`1px solid ${TH.border}`, background: TH.bgCard, fontWeight:700, color:TH.text}}/>
@@ -935,8 +1017,6 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
   );
 }
 
-
-
 function PinScreen({ settings, setSettings, onSuccess, TH, showToast, onLogout }) {
   const [input, setInput] = useState(""); 
   const [isForgot, setIsForgot] = useState(false); 
@@ -955,8 +1035,8 @@ function PinScreen({ settings, setSettings, onSuccess, TH, showToast, onLogout }
       <KeyRound size={60} color={TH.primary} style={{marginBottom: 20}}/>
       <h2 style={{ fontWeight: 800, color: TH.text }}>Restore Access</h2>
       <input type="text" placeholder="Secret Word" value={recIn} onChange={e=>setRecIn(e.target.value)} style={{ width:"100%", maxWidth:300, padding:18, borderRadius:16, marginTop:30, background:TH.bgCard, border:`1px solid ${TH.border}`, color:TH.text, textAlign:"center", fontWeight:700, outline:"none" }} />
-      <button onClick={()=>{ if(btoa(recIn.toLowerCase()) === settings.recoveryWord || recIn.toLowerCase() === settings.recoveryWord){ setSettings({...settings, pinLock:""}); onSuccess(); } else showToast("ভুল শব্দ!", "error"); }} style={{ width:"100%", maxWidth:300, padding:18, background:TH.primary, color:"#000", border:"none", borderRadius:16, fontWeight:800, marginTop:15 }}>Unlock</button>
-      <button onClick={()=>setIsForgot(false)} style={{ marginTop: 20, color: TH.textMid, background: "none", border: "none", fontWeight: 700, fontSize:14 }}>Cancel</button>
+      <button onClick={()=>{ if(btoa(recIn.toLowerCase()) === settings.recoveryWord || recIn.toLowerCase() === settings.recoveryWord){ setSettings({...settings, pinLock:""}); onSuccess(); } else showToast("ভুল শব্দ!", "error"); }} className="premium-btn" style={{ width:"100%", maxWidth:300, padding:18, borderRadius:16, marginTop:15 }}>Unlock</button>
+      <button onClick={()=>setIsForgot(false)} style={{ marginTop: 20, color: TH.textMid, background: "none", border: "none", fontWeight: 700, fontSize:14, cursor:"pointer" }}>Cancel</button>
     </div>
   );
   
@@ -967,24 +1047,23 @@ function PinScreen({ settings, setSettings, onSuccess, TH, showToast, onLogout }
         {[1,2,3,4].map(i => <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", background: input.length >= i ? TH.primary : TH.border, transition:"0.2s" }} />)}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-        {[1,2,3,4,5,6,7,8,9, "C", 0, "×"].map(k => (<button key={k} onClick={() => { if(k==="C") setInput(""); else if(k==="×") setInput(input.slice(0,-1)); else handleKey(k.toString()); }} style={{ width: 75, height: 75, borderRadius: "50%", background: TH.bgCard, border: `1px solid ${TH.border}`, color: TH.text, fontSize: 24, fontWeight: 800 }}>{k}</button>))}
+        {[1,2,3,4,5,6,7,8,9, "C", 0, "×"].map(k => (<button key={k} onClick={() => { if(k==="C") setInput(""); else if(k==="×") setInput(input.slice(0,-1)); else handleKey(k.toString()); }} className="glass-panel" style={{ width: 75, height: 75, borderRadius: "50%", color: TH.text, fontSize: 24, fontWeight: 800, cursor:"pointer" }}>{k}</button>))}
       </div>
       <div style={{ display: "flex", gap: 30, marginTop: 40 }}>
-        <button onClick={()=>setIsForgot(true)} style={{ color: TH.textMid, background: "none", border: "none", fontWeight: 700, fontSize:14 }}>Forgot PIN?</button>
-        <button onClick={onLogout} style={{ color: "#ef4444", background: "none", border: "none", fontWeight: 700, fontSize:14, display: "flex", alignItems: "center", gap: 5 }}><LogOut size={16}/> Logout</button>
+        <button onClick={()=>setIsForgot(true)} style={{ color: TH.textMid, background: "none", border: "none", fontWeight: 700, fontSize:14, cursor:"pointer" }}>Forgot PIN?</button>
+        <button onClick={onLogout} style={{ color: "#ef4444", background: "none", border: "none", fontWeight: 700, fontSize:14, display: "flex", alignItems: "center", gap: 5, cursor:"pointer" }}><LogOut size={16}/> Logout</button>
       </div>
     </div>
   );
 }
 
-
 function NavBtn({ active, icon: Icon, label, onClick, TH }) { 
   return (
-    <button onClick={onClick} style={{ background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-      <div style={{ padding: "8px 16px", borderRadius: 16, background: active ? TH.primaryBg : "transparent", transition:"0.2s" }}>
-        <Icon size={22} color={active ? TH.primary : TH.textMid} strokeWidth={active ? 2.5 : 2}/>
+    <button onClick={onClick} style={{ background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor:"pointer" }}>
+      <div style={{ padding: "8px 16px", borderRadius: 16, background: active ? "var(--gold-bg)" : "transparent", transition:"0.2s" }}>
+        <Icon size={22} color={active ? "var(--gold-primary)" : TH.textMid} strokeWidth={active ? 2.5 : 2}/>
       </div>
-      <span style={{ fontSize: 10, fontWeight: 800, color: active ? TH.primary : TH.textMid, letterSpacing: "0.5px" }}>{label}</span>
+      <span style={{ fontSize: 10, fontWeight: 800, color: active ? "var(--gold-primary)" : TH.textMid, letterSpacing: "0.5px" }}>{label}</span>
     </button>
   ); 
 }
