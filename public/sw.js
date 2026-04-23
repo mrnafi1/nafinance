@@ -1,5 +1,5 @@
 // 🔴 প্রতিবার নতুন আপডেট দিলে নিচের ভার্সন নাম্বারটি পরিবর্তন করবেন (যেমন: v1 থেকে v2)
-const CACHE_NAME = 'nafinance-premium-v4'; 
+const CACHE_NAME = 'nafinance-premium-v5'; 
 
 const assetsToCache = [
   '/',

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, Hash, X, Calendar, LayoutGrid, Wallet } from 'lucide-react';
+import { Loader2, Hash, X, Calendar, LayoutGrid, Wallet, FileText } from 'lucide-react'; // 🔥 FileText আইকন অ্যাড করা হয়েছে
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function TxModal({ 
@@ -8,7 +8,7 @@ export default function TxModal({
 }) {
   const [type, setType] = useState(editData?.type || "expense");
   const [f, setF] = useState(editData || { 
-    date: new Date().toISOString().split('T')[0], category: "", amount: "", walletId: data.wallets?.[0]?.id || "", note: "" 
+    date: new Date().toISOString().split('T')[0], category: "", amount: "", walletId: data.wallets?.[0]?.id || "", note: "" // 🔥 note ডিফাইন করা আছে
   });
   const [tagInput, setTagInput] = useState(editData?.tags ? editData.tags.join(', ') : "");
   const [file, setFile] = useState(null);
@@ -28,9 +28,19 @@ export default function TxModal({
         finalUrl = await getDownloadURL(fileRef);
       }
       const parsedTags = tagInput ? tagInput.split(',').map(t => t.trim()).filter(Boolean) : [];
-      saveTx({ ...f, type, amount: Number(f.amount), id: editData?.id || Date.now().toString(), tags: parsedTags, imageUrl: finalUrl, date: f.date });
-      onClose();
-    } catch (err) {
+      // 🔥 f (যার ভেতর note আছে) সেটা সহ সব ডেটা সেভ হচ্ছে
+    // যদি editData থাকে তবে তার আইডি ব্যবহার হবে, না থাকলে নতুন আইডি তৈরি হবে
+      const finalId = editData?.id ? editData.id : Date.now().toString();
+      
+      saveTx({ 
+        ...f, 
+        type, 
+        amount: Number(f.amount), 
+        id: finalId, 
+        tags: parsedTags, 
+        imageUrl: finalUrl, 
+        date: f.date },editData);
+       } catch (err) {
       showToast(lang === 'bn' ? "ব্যর্থ হয়েছে!" : "Failed!", "error");
     } finally { setUploading(false); }
   };
@@ -44,7 +54,6 @@ export default function TxModal({
           <button onClick={onClose} style={{ color: TH.textMid, background: TH.bgInner, border: "none", borderRadius: "50%", padding: 6, cursor: "pointer", display: "flex" }}><X size={20}/></button>
         </div>
 
-        {/* 🔴 এখানে চেঞ্জ করা হয়েছে: ট্যাব সুইচ করলে ডাটা ক্লিয়ার হবে */}
         <div style={{ display: "flex", background: TH.bgInner, borderRadius: 16, padding: 6, marginBottom: 20, border: `1px solid ${TH.border}` }}>
           <button onClick={() => { setType("expense"); setF({...f, amount: "", category: ""}); }} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: type === "expense" ? "#ef4444" : "transparent", color: type === "expense" ? "#fff" : TH.textMid, fontWeight: 700, fontSize: "14px", transition: "0.3s" }}>
             {lang === 'bn' ? 'ব্যয় (Expense)' : 'Expense'}
@@ -81,6 +90,12 @@ export default function TxModal({
           </div>
         </div>
       
+        {/* 🔥 নতুন নোট (Note) ফিল্ড বসানো হলো */}
+        <div style={{ display: "flex", alignItems: "center", background: TH.bgInner, padding: "14px 16px", borderRadius: 16, marginBottom: 15, border: `1px solid ${TH.border}` }}>
+          <FileText size={18} style={{ color: "#ec4899", marginRight: 12 }} />
+          <input placeholder={lang === 'bn' ? "বিবরণ বা নোট লিখুন (ঐচ্ছিক)" : "Add a note (optional)"} value={f.note || ""} onChange={(e) => setF({...f, note: e.target.value})} style={{ background: "none", border: "none", color: TH.text, outline: "none", width: "100%", fontSize: "15px", fontWeight: 500 }} />
+        </div>
+
         <div style={{ display: "flex", alignItems: "center", background: TH.bgInner, padding: "14px 16px", borderRadius: 16, marginBottom: 24, border: `1px solid ${TH.border}` }}>
           <Hash size={18} style={{ color: "#f59e0b", marginRight: 12 }} />
           <input placeholder={lang === 'bn' ? "ট্যাগ লিখুন (কমা দিয়ে)" : "Tags (comma separated)"} value={tagInput} onChange={(e) => setTagInput(e.target.value)} style={{ background: "none", border: "none", color: TH.text, outline: "none", width: "100%", fontSize: "15px", fontWeight: 500 }} />

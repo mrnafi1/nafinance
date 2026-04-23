@@ -3,6 +3,7 @@ import { BarChart, Bar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis
 import { Plus, Trash2, MessageCircle, Home, BarChart2, Settings, Users, X, Download, Eye, EyeOff, Search, AlertTriangle, Landmark, Wallet, Lock, Sun, Moon, KeyRound, Edit3, Check, FileText, Edit, ArrowRightLeft, TrendingUp, TrendingDown, Activity, Mail, LogOut, DownloadCloud, Zap, Hash, Paperclip, Loader2, Image as ImageIcon } from "lucide-react";
 import TxModal from './components/TxModal';
 import SettingsModal from './components/SettingsModal';
+import ChallengesView from './components/ChallengesView';
 
 // 🔥 Firebase Imports
 import { initializeApp } from "firebase/app";
@@ -163,7 +164,7 @@ const formatDate = (isoDate) => {
 
 const DEFAULT_DATA = { 
   txs: [], wallets: [{ id: "w1", name: "Cash", balance: 0, icon: "💵" }, { id: "w2", name: "Bank", balance: 0, icon: "🏦" }], 
-  debts: [], goals: [], budgets: {}, savings: { balance: 0, history: [] }, customCategories: { expense: [], income: [] }, dismissedAlerts: [], recurring: [], templates: [] 
+  debts: [], goals: [], budgets: {}, savings: { balance: 0, history: [] }, customCategories: { expense: [], income: [] }, dismissedAlerts: [], recurring: [], templates: [] ,challenges: [],
 };
 
 const DEFAULT_SETTINGS = { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "", recoveryWord: "",budgetAlertThreshold: 80 };
@@ -311,24 +312,56 @@ export default function App() {
     setModal(null);
   };
 
-  const saveTx = (tx, oldTx = null, isRecurring = false, saveAsTemplate = false) => {
+const saveTx = (tx, oldTx = null, isRecurring = false, saveAsTemplate = false) => {
+    // 🔥 বাগ ফিক্স ১: ক্যাটাগরি সিলেক্ট না করলে সেভ হবে না
+    if (!tx.category) {
+      showToast(settings.lang === 'bn' ? "দয়া করে ক্যাটাগরি সিলেক্ট করুন!" : "Please select a category!", "error");
+      return false;
+    }
+
     let ws = [...data.wallets];
-    if (oldTx) { ws = ws.map(w => w.id === oldTx.walletId ? { ...w, balance: oldTx.type === "income" ? w.balance - oldTx.amount : w.balance + oldTx.amount } : w); }
-    const isInc = tx.type === "income"; const targetW = ws.find(w => w.id === tx.walletId);
+    
+    // এডিট মোড: আগের ব্যালেন্স আন্ডু (Undo) করা
+    if (oldTx) { 
+      ws = ws.map(w => w.id === oldTx.walletId ? { ...w, balance: oldTx.type === "income" ? w.balance - oldTx.amount : w.balance + oldTx.amount } : w); 
+    }
+    
+    const isInc = tx.type === "income"; 
+    const targetW = ws.find(w => w.id === tx.walletId);
+    
     if (!targetW) { showToast("Wallet error", "error"); return false; }
-    if (!isInc && targetW.balance < tx.amount) { showToast(settings.lang==='bn'?"ব্যালেন্স নেই!":"Insufficient Balance", "error"); return false; }
+    
+    // ব্যালেন্স চেক
+    if (!isInc && targetW.balance < tx.amount) { 
+      showToast(settings.lang === 'bn' ? "ব্যালেন্স নেই!" : "Insufficient Balance", "error"); 
+      return false; 
+    }
+    
+    // নতুন ব্যালেন্স আপডেট
     ws = ws.map(w => w.id === tx.walletId ? { ...w, balance: isInc ? w.balance + tx.amount : w.balance - tx.amount } : w);
     
     let newRecs = [...(data.recurring || [])];
-    if(isRecurring && !oldTx) { const d = new Date(tx.date); d.setMonth(d.getMonth() + 1); newRecs.push({ ...tx, nextDate: d.toISOString().split("T")[0] }); }
+    if(isRecurring && !oldTx) { 
+      const d = new Date(tx.date); d.setMonth(d.getMonth() + 1); 
+      newRecs.push({ ...tx, nextDate: d.toISOString().split("T")[0] }); 
+    }
     
     let newTemplates = [...(data.templates || [])];
     if(saveAsTemplate && !oldTx) {
        newTemplates.push({ id: genId(), type: tx.type, amount: tx.amount, category: tx.category, walletId: tx.walletId, note: tx.note || "Template", tags: tx.tags || [] });
     }
 
-    setData({ ...data, txs: oldTx ? data.txs.map(t => t.id === oldTx.id ? tx : t) : [tx, ...data.txs], wallets: ws, recurring: newRecs, templates: newTemplates });
-    showToast(settings.lang==='bn'?"সফল!":"Success!", "success"); return true;
+    // 🔥 বাগ ফিক্স ২: ডেটাবেস আপডেট (ডাবল হওয়া ফিক্সড)
+    setData({ 
+      ...data, 
+      txs: oldTx ? data.txs.map(t => t.id === oldTx.id ? tx : t) : [tx, ...data.txs], 
+      wallets: ws, 
+      recurring: newRecs, 
+      templates: newTemplates 
+    });
+    
+    showToast(settings.lang === 'bn' ? "সফল!" : "Success!", "success"); 
+    return true;
   };
 
   const deleteTx = tx => {
@@ -406,7 +439,15 @@ export default function App() {
       <main className="animate-slide" style={{ maxWidth: 480, margin: "0 auto", padding: "15px 20px 140px", position:"relative", zIndex:1 }}>
         {tab === "home" && <HomeView data={data} setData={setData} fmt={fmt} TH={TH} settings={settings} setSettings={setSettings} getCategories={getCategories} deleteTx={deleteTx} setEditTxData={setEditTxData} setModal={setModal} setConfirmDialog={setConfirmDialog} deleteTemplate={deleteTemplate} saveTx={saveTx} />}
         {tab === "assets" && <AssetsView data={data} setData={setData} fmt={fmt} TH={TH} showToast={showToast} settings={settings} setConfirmDialog={setConfirmDialog} />}
-        {tab === "planning" && <PlanningView data={data} setData={setData} fmt={fmt} TH={TH} settings={settings} getCategories={getCategories} showToast={showToast} setConfirmDialog={setConfirmDialog} />}
+        {tab === "planning" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 30 }}>
+            {/* আপনার আগের প্ল্যানিং ভিউ */}
+            <PlanningView data={data} setData={setData} fmt={fmt} TH={TH} settings={settings} getCategories={getCategories} showToast={showToast} setConfirmDialog={setConfirmDialog} />
+            
+            {/* 🔥 নতুন চ্যালেঞ্জ ভিউ */}
+            <ChallengesView data={data} setData={setData} fmt={fmt} TH={TH} lang={settings.lang} showToast={showToast} />
+          </div>
+        )}
         {tab === "graphs" && <GraphsView data={data} fmt={fmt} TH={TH} lang={settings.lang} getCategories={getCategories} />}
       </main>
 
@@ -1015,7 +1056,9 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
   );
 }
 
-function GraphsView({ data, fmt, TH, lang, getCategories }) {
+
+
+  function GraphsView({ data, fmt, TH, lang, getCategories }) {
   const [gType, setGType] = useState("breakdown");
   
   const weeklyData = useMemo(() => Array.from({length: 7}).map((_, i) => { 
@@ -1031,6 +1074,40 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
     const exp = data.txs.filter(t => t.type === "expense" && t.date.startsWith(mStr)).reduce((s, t) => s + Number(t.amount || 0), 0); 
     return { name: m, income: inc, expense: exp }; 
   }), [data.txs]);
+
+  // 🔥 নতুন হিটম্যাপ লজিক (গত ৬০ দিনের খরচ)
+  const heatmapData = useMemo(() => {
+    const days = [];
+    const today = new Date();
+    let maxExp = 0;
+    const expByDate = {};
+    
+    // দিনের হিসেবে খরচ গ্রুপ করা
+    data.txs.filter(t => t.type === 'expense').forEach(t => {
+      expByDate[t.date] = (expByDate[t.date] || 0) + Number(t.amount);
+    });
+    
+    for (let i = 59; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const exp = expByDate[dateStr] || 0;
+      if(exp > maxExp) maxExp = exp;
+      days.push({ date: dateStr, amount: exp });
+    }
+    
+    // খরচের ওপর ভিত্তি করে লেভেল (০ থেকে ৪) সেট করা
+    return days.map(d => {
+      let level = 0;
+      if (d.amount > 0) {
+        if (d.amount > maxExp * 0.75) level = 4; // ডেঞ্জার জোন (সবচেয়ে গাঢ়)
+        else if (d.amount > maxExp * 0.5) level = 3;
+        else if (d.amount > maxExp * 0.25) level = 2;
+        else level = 1; // অল্প খরচ
+      }
+      return { ...d, level };
+    });
+  }, [data.txs]);
 
   // Asset & Liability Calculation
   const positiveWallets = (data.wallets || []).filter(w => Number(w.balance) > 0).reduce((s, w) => s + Number(w.balance), 0);
@@ -1048,9 +1125,12 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
   
   return (
     <div className="animate-slide" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div className="glass-panel" style={{ display: "flex", padding: 6, borderRadius: 20 }}>
-        {['breakdown', 'weekly', 'monthly', 'net worth'].map(t => (
-          <button key={t} onClick={()=>setGType(t)} style={{ flex: 1, padding: "12px 2px", borderRadius: 16, background: gType===t ? "var(--gold-bg)" : "transparent", color: gType===t ? "var(--gold-primary)" : TH.textMid, fontWeight: 700, border: "none", fontSize: 11, textTransform:"uppercase", transition: "0.3s", cursor:"pointer" }}>{t}</button>
+      {/* 🔥 নতুন Heatmap অপশন মেনুতে যোগ করা হলো */}
+      <div className="glass-panel" style={{ display: "flex", padding: 6, borderRadius: 20, flexWrap: "wrap" }}>
+        {['breakdown', 'weekly', 'monthly', 'heatmap', 'net worth'].map(t => (
+          <button key={t} onClick={()=>setGType(t)} style={{ flex: 1, minWidth: "18%", padding: "12px 2px", borderRadius: 16, background: gType===t ? "var(--gold-bg)" : "transparent", color: gType===t ? "var(--gold-primary)" : TH.textMid, fontWeight: 700, border: "none", fontSize: 11, textTransform:"uppercase", transition: "0.3s", cursor:"pointer" }}>
+            {t}
+          </button>
         ))}
       </div>
       
@@ -1068,11 +1148,11 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
             </div>
             <div style={{ display:"flex", gap:14 }}>
                <div className="glass-panel" style={{ flex:1, padding:16, borderRadius:20, border:`1px solid rgba(59,130,246,0.3)` }}>
-                  <p style={{fontSize:11, fontWeight:700, color:"#3b82f6"}}>{lang==='bn'?'মোট আয় (সব মিলিয়ে)':'Total Income'}</p>
+                  <p style={{fontSize:11, fontWeight:700, color:"#3b82f6"}}>{lang==='bn'?'মোট আয় (সব মিলিয়ে)':'Total Income'}</p>
                   <p style={{fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize:16, fontWeight:800, marginTop:4, color:TH.text}}>{fmt(totalIncAllTime)}</p>
                </div>
                <div className="glass-panel" style={{ flex:1, padding:16, borderRadius:20, border:`1px solid rgba(245,158,11,0.3)` }}>
-                  <p style={{fontSize:11, fontWeight:700, color:"#f59e0b"}}>{lang==='bn'?'মোট খরচ (সব মিলিয়ে)':'Total Expense'}</p>
+                  <p style={{fontSize:11, fontWeight:700, color:"#f59e0b"}}>{lang==='bn'?'মোট খরচ (সব মিলিয়ে)':'Total Expense'}</p>
                   <p style={{fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize:16, fontWeight:800, marginTop:4, color:TH.text}}>{fmt(totalExpAllTime)}</p>
                </div>
             </div>
@@ -1080,6 +1160,52 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
                <p style={{fontSize:13, fontWeight:700, color:TH.textMid}}>{lang==='bn'?'নেট ওয়ার্থ (আসল সম্পদ)':'Net Worth'}</p>
                <h2 style={{fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize:36, fontWeight:800, margin:"10px 0", color: netWorth >= 0 ? "#10b981" : "#ef4444"}}>{fmt(netWorth)}</h2>
                <p style={{fontSize:11, fontWeight:600, color:TH.textMid}}>{lang==='bn'?'সম্পদ - দায় = আসল মূল্য':'Assets - Liabilities'}</p>
+            </div>
+         </div>
+      ) : gType === 'heatmap' ? (
+         // 🔥 হিটম্যাপ UI ডিজাইন 
+         <div className="glass-panel animate-scale" style={{ padding: 25, borderRadius: 28, display:"flex", flexDirection:"column", alignItems:"center", minHeight: 400 }}>
+            <h3 style={{fontSize: 15, fontWeight: 800, color: TH.text, marginBottom: 25, textAlign:"center"}}>
+               {lang === 'bn' ? 'গত ৬০ দিনের খরচের চিত্র' : 'Last 60 Days Spending Heatmap'}
+            </h3>
+            
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: 320, width: "100%" }}>
+              {heatmapData.map((d, i) => {
+                const colors = [
+                   TH.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', // Level 0 (খালি)
+                   'rgba(239, 68, 68, 0.3)', // Level 1 (হালকা)
+                   'rgba(239, 68, 68, 0.5)', // Level 2
+                   'rgba(239, 68, 68, 0.8)', // Level 3
+                   '#ef4444'                 // Level 4 (সবচেয়ে গাঢ়)
+                ];
+                return (
+                  <div 
+                    key={i} 
+                    title={`${d.date} • ${fmt(d.amount)}`} // হোভার করলে বা চাপ দিলে ডেটা দেখাবে
+                    style={{
+                      width: 22, 
+                      height: 22, 
+                      borderRadius: 6, 
+                      background: colors[d.level],
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.2)"}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                  />
+                )
+              })}
+            </div>
+            
+            {/* কালার ইনডেক্স (বুঝার সুবিধার জন্য) */}
+            <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap: 10, marginTop: 40, fontSize: 12, color: TH.textMid, fontWeight: 700 }}>
+               <span>{lang==='bn'?'কম':'Less'}</span>
+               <div style={{width:14, height:14, borderRadius:4, background:TH.mode==='dark'?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)'}}></div>
+               <div style={{width:14, height:14, borderRadius:4, background:'rgba(239, 68, 68, 0.3)'}}></div>
+               <div style={{width:14, height:14, borderRadius:4, background:'rgba(239, 68, 68, 0.5)'}}></div>
+               <div style={{width:14, height:14, borderRadius:4, background:'rgba(239, 68, 68, 0.8)'}}></div>
+               <div style={{width:14, height:14, borderRadius:4, background:'#ef4444'}}></div>
+               <span>{lang==='bn'?'বেশি':'More'}</span>
             </div>
          </div>
       ) : (

@@ -5,6 +5,7 @@ export default function SettingsModal({
   settings, setSettings, data, setData, onClose, TH, showToast, AUTHOR, setConfirmDialog, onLogout,
   genId, CURRENCIES, DEFAULT_DATA, DEFAULT_SETTINGS 
 }) {
+  // 🔥 ফিক্সড: আগের কোডে এখানে টাইপিং মিস্টেক ছিল
   const [newPin, setNewPin] = useState(""); 
   const [recovery, setRecovery] = useState(""); 
   const [newCat, setNewCat] = useState({ type: "expense", name: "", icon: "📦", color: "#8b5cf6" }); 
@@ -48,7 +49,8 @@ export default function SettingsModal({
           <input type="text" placeholder={settings.lang==='bn'?'নাম':'Name'} value={newCat.name} onChange={e=>setNewCat({...newCat, name:e.target.value})} style={{ width:"100%", padding:14, borderRadius:14, background:TH.bgCard, color:TH.text, border:"none", marginBottom:12, outline:"none", fontWeight:600, fontSize:14 }} />
           <button onClick={addCategory} className="premium-btn" style={{ width:"100%", padding:14, borderRadius:14, fontSize:14 }}>Add Category</button>
         </div>
-<div style={{ padding:20, background:TH.bgInner, borderRadius:24, marginBottom:20 }}>
+        
+        <div style={{ padding:20, background:TH.bgInner, borderRadius:24, marginBottom:20 }}>
           <p style={{ fontWeight:700, marginBottom:12, color:TH.textMid, fontSize:12, textTransform:"uppercase" }}>{settings.lang==='bn'?'বাজেট অ্যালার্ট লেভেল':'Budget Alert Level'}</p>
           <select 
             value={settings.budgetAlertThreshold || 80} 
@@ -62,6 +64,7 @@ export default function SettingsModal({
             ))}
           </select>
         </div>
+        
         <div style={{ padding:20, background:TH.bgInner, borderRadius:24, marginBottom:20 }}>
           <p style={{ fontWeight:700, marginBottom:12, color:TH.textMid, fontSize:12, textTransform:"uppercase" }}>PIN SECURITY</p>
           <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:12 }}>
@@ -78,7 +81,25 @@ export default function SettingsModal({
         </div>
         
         <button onClick={onLogout} style={{ width: "100%", padding: 16, background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "none", borderRadius: 16, fontWeight: 800, fontSize:14, marginBottom: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor:"pointer" }}><LogOut size={18}/> Log Out (Google)</button>
-        <button onClick={()=>{ setConfirmDialog({show:true, msg:settings.lang==='bn'?"সব ডেটা মুছে যাবে! নিশ্চিত?":"Are you sure to Reset?", onConfirm:()=>{localStorage.clear(); window.location.reload();}}) }} style={{ width: "100%", padding: 16, background: "transparent", color: TH.textMid, border: `1px solid ${TH.border}`, borderRadius: 16, fontWeight: 700, fontSize:14, cursor:"pointer" }}>Factory Reset</button>
+        
+        {/* 🔥 আপডেট হওয়া Factory Reset বাটন */}
+        <button 
+          onClick={() => { 
+            setConfirmDialog({
+              show: true, 
+              msg: settings.lang === 'bn' ? "সব ডেটা মুছে যাবে! নিশ্চিত?" : "Are you sure to Reset?", 
+              onConfirm: () => {
+                setData(DEFAULT_DATA); // ডেটাবেস জিরো করে দিবে
+                setSettings(DEFAULT_SETTINGS); // সেটিংস ডিফল্ট করে দিবে
+                onClose(); // পপ-আপ বন্ধ করবে
+                showToast(settings.lang === 'bn' ? "সব ডেটা সফলভাবে মুছে ফেলা হয়েছে!" : "Factory reset successful!", "success");
+              }
+            });
+          }} 
+          style={{ width: "100%", padding: 16, background: "transparent", color: TH.textMid, border: `1px solid ${TH.border}`, borderRadius: 16, fontWeight: 700, fontSize:14, cursor:"pointer" }}
+        >
+          Factory Reset
+        </button>
         
         <div className="animate-scale" style={{ marginTop: 30, padding: 20, background: "linear-gradient(145deg, rgba(251,191,36,0.1), rgba(251,191,36,0.02))", borderRadius: 24, border: `1px solid rgba(251,191,36,0.3)`, display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 55, height: 55, borderRadius: 18, background: TH.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, boxShadow: "0 8px 20px rgba(251,191,36,0.4)" }}>
