@@ -31,7 +31,13 @@ const googleProvider = new GoogleAuthProvider();
 
 // 🚀 Premium Global Styles
 const PREMIUM_STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap'); 
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Hind+Siliguri:wght@500;600;700&display=swap');
+
+.amount-font { 
+    font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif !important; 
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; } 
   
   :root {
@@ -133,14 +139,16 @@ const CURRENCIES = [
 const TODAY = () => new Date().toISOString().split("T")[0];
 const genId = () => Math.random().toString(36).substring(2, 11);
 
-// 🔴 ফিক্স: English Language সিলেক্ট করলে 1,2,3 হিসেবে দেখাবে
+
+// 🔴 ফিক্স: ল্যাঙ্গুয়েজ ইংলিশ হলে 1,2,3 এবং বাংলা হলে ১,২,৩ দেখাবে
 const fmtMoney = (n, curr, lang) => {
   const c = CURRENCIES.find(x => x.code === curr) || CURRENCIES[0];
   const locale = lang === 'bn' ? 'bn-BD' : 'en-US';
   const numStr = new Intl.NumberFormat(locale, { 
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-    useGrouping: true
+    useGrouping: true,
+    numberingSystem: lang === 'bn' ? 'beng' : 'latn' 
   }).format(n || 0);
   
   return lang === 'bn' ? `${numStr}${c.sym}` : `${c.sym}${numStr}`;
@@ -159,7 +167,6 @@ const DEFAULT_DATA = {
 };
 
 const DEFAULT_SETTINGS = { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "", recoveryWord: "" };
-
 export default function App() {
   const [data, setData] = useState(DEFAULT_DATA);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -369,8 +376,8 @@ export default function App() {
             ) : (
               <div style={{ width: 40, height: 40, background: "linear-gradient(135deg, var(--gold-primary), var(--gold-secondary))", borderRadius: 12, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--btn-text)", fontWeight:900, fontSize: 18, boxShadow: `0 5px 15px var(--gold-glow)` }}>{firebaseUser?.displayName?.charAt(0) || "N"}</div>
             )}
-            <span style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 22, letterSpacing: "-0.5px" }}>
-               Na<span style={{color: "var(--gold-primary)"}}>Finance</span>
+            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: "-0.5px" }}>
+               <span style={{color: "var(--gold-primary)"}}>  NaFinance</span>
             </span>
           </div>
           <button onClick={() => setModal("settings")} style={{ padding: 10, background: TH.bgInner, border: `1px solid ${TH.border}`, borderRadius: 14, color: TH.textMid, boxShadow: "var(--glass-shadow)", cursor:"pointer" }}><Settings size={20}/></button>
@@ -407,7 +414,9 @@ export default function App() {
       </div>
 
       {modal === "tx" && <TxModal data={data} saveTx={saveTx} deleteTx={deleteTx} onClose={() => setModal(null)} TH={TH} editData={editTxData} getCategories={getCategories} lang={settings.lang} showToast={showToast} firebaseUser={auth.currentUser} storage={storage} />}
-      {modal === "settings" && <SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={() => setModal(null)} TH={TH} showToast={showToast} AUTHOR={AUTHOR} setConfirmDialog={setConfirmDialog} onLogout={onLogout} genId={genId} CURRENCIES={CURRENCIES} />}
+{modal === "settings" && (<SettingsModal settings={settings} setSettings={setSettings} data={data} setData={setData} onClose={() => setModal(null)} TH={TH} showToast={showToast}  AUTHOR={AUTHOR}
+  setConfirmDialog={setConfirmDialog} onLogout={onLogout}  genId={genId}  CURRENCIES={CURRENCIES}  DEFAULT_DATA={DEFAULT_DATA}  DEFAULT_SETTINGS={DEFAULT_SETTINGS}  /> )}
+
     </div>
   );
 }
@@ -488,7 +497,7 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
           <div>
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase" }}>{settings.lang==='bn'?'মোট ব্যালেন্স':'Total Balance'}</p>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-              <h2 style={{ fontFamily: 'Syne', fontSize: 44, fontWeight: 900, color: "var(--balance-text)", letterSpacing: "-1px" }}>{fmt(total)}</h2>
+              <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize: 44, fontWeight: 900, color: "var(--balance-text)", letterSpacing: "-1px" }}>{fmt(total)}</h2>
             </div>
           </div>
           <button onClick={()=>setSettings({...settings, hideBalance: !settings.hideBalance})} style={{ padding: 12, background: "rgba(255,255,255,0.1)", border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 14, color: "#fff", cursor:"pointer" }}>
@@ -499,15 +508,15 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
         <div style={{ display: "flex", gap: 15, marginTop: 35, position: "relative", zIndex: 1 }}>
           <div style={{ flex: 1, background: "rgba(255,255,255,0.1)", padding: "10px", borderRadius: "14px" }}>
              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingUp size={12} color="#4ade80"/> {settings.lang==='bn'?'আয়':'INCOME'}</p>
-             <p style={{ fontFamily: 'Syne', fontSize: 15, fontWeight: 700, color: "#4ade80", marginTop: 4 }}>{fmt(monthlyInc)}</p>
+             <p style={{ fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize: 15, fontWeight: 700, color: "#4ade80", marginTop: 4 }}>{fmt(monthlyInc)}</p>
           </div>
           <div style={{ flex: 1, background: "rgba(255,255,255,0.1)", padding: "10px", borderRadius: "14px" }}>
              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><TrendingDown size={12} color="#f87171"/> {settings.lang==='bn'?'ব্যয়':'EXPENSE'}</p>
-             <p style={{ fontFamily: 'Syne', fontSize: 15, fontWeight: 700, color: "#f87171", marginTop: 4 }}>{fmt(monthlyExp)}</p>
+             <p style={{ fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize: 15, fontWeight: 700, color: "#f87171", marginTop: 4 }}>{fmt(monthlyExp)}</p>
           </div>
           <div style={{ flex: 1, background: "rgba(255,255,255,0.1)", padding: "10px", borderRadius: "14px" }}>
              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 600, display:"flex", alignItems:"center", gap:6 }}><Activity size={12} color="#93c5fd"/> {settings.lang==='bn'?'সঞ্চয়':'SAVINGS'}</p>
-             <p style={{ fontFamily: 'Syne', fontSize: 15, fontWeight: 700, color: "#93c5fd", marginTop: 4 }}>{fmt(monthlySav)}</p>
+             <p style={{ fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize: 15, fontWeight: 700, color: "#93c5fd", marginTop: 4 }}>{fmt(monthlySav)}</p>
           </div>
         </div>
       </div>
@@ -577,7 +586,7 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <p style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: tx.type === "income" ? "#10b981" : TH.text }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
+                <p style={{ fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontWeight: 800, fontSize: 15, color: tx.type === "income" ? "#10b981" : TH.text }}>{tx.type === "income" ? "+" : "-"}{fmt(tx.amount)}</p>
                 <button onClick={(e) => { e.stopPropagation(); deleteTx(tx); }} style={{ background: "none", border: "none", color: "#ef4444", padding: "4px 0 4px 8px", cursor:"pointer" }}><Trash2 size={18}/></button>
               </div>
             </div>
@@ -684,7 +693,7 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
             </div>
             <span style={{ fontSize: 26, zIndex:1, position:"relative" }}>{w.icon}</span>
             <p style={{ fontSize: 12, fontWeight: 600, color: TH.textMid, marginTop: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>{w.name}</p>
-            <p style={{ fontFamily: 'Syne', fontSize: 18, fontWeight: 800, marginTop: 2, color: TH.text, zIndex:1, position:"relative" }}>{fmt(w.balance)}</p>
+            <p style={{ fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize: 18, fontWeight: 800, marginTop: 2, color: TH.text, zIndex:1, position:"relative" }}>{fmt(w.balance)}</p>
           </div>
         ))}
       </div>
@@ -726,7 +735,7 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <p style={{ fontFamily: 'Syne', fontWeight: 800, fontSize:15, color: TH.text }}>{fmt(d.amount)}</p>
+            <p style={{ fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontWeight: 800, fontSize:15, color: TH.text }}>{fmt(d.amount)}</p>
             <button onClick={(e) => { e.stopPropagation(); sendReminder(d); }} style={{ color: "#25D366", display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
               <MessageCircle size={16} />
             </button>
@@ -775,7 +784,7 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
             <div style={{ position: "absolute", top: -60, right: -60, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, var(--gold-glow) 0%, transparent 70%)" }}/>
             <Landmark size={36} style={{margin:"0 auto 15px", color:TH.primary, position:"relative", zIndex:1}}/>
             <p style={{ fontWeight: 700, color: TH.textMid, letterSpacing:1.5, fontSize:10, position:"relative", zIndex:1 }}>SAVINGS VAULT</p>
-            <h2 style={{ fontFamily: 'Syne', fontSize: 42, fontWeight: 800, margin:"10px 0 25px", color: TH.text, position:"relative", zIndex:1 }}>{fmt(data.savings.balance)}</h2>
+            <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize: 42, fontWeight: 800, margin:"10px 0 25px", color: TH.text, position:"relative", zIndex:1 }}>{fmt(data.savings.balance)}</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, position:"relative", zIndex:1 }}>
               <select value={vaultWallet} onChange={e=>setVaultWallet(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, fontWeight: 700, outline:"none", fontSize:14 }}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
               <input type="number" placeholder="Amount" value={saveAmt} onChange={e=>setSaveAmt(e.target.value)} style={{ padding: 14, borderRadius: 16, background: TH.bgInner, border: "none", color: TH.text, textAlign:"center", outline:"none", fontWeight:700, fontSize:16 }} />
@@ -798,7 +807,7 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
                        <p style={{ fontSize: 12, color: TH.textMid, fontWeight: 500 }}>{formatDate(sv.date)}</p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                       <p style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 16, color: sv.type === 'deposit' ? "#10b981" : "#ef4444" }}>{sv.type === 'deposit' ? "+" : "-"}{fmt(sv.amount)}</p>
+                       <p style={{ fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontWeight: 800, fontSize: 16, color: sv.type === 'deposit' ? "#10b981" : "#ef4444" }}>{sv.type === 'deposit' ? "+" : "-"}{fmt(sv.amount)}</p>
                        <button onClick={() => {
                           setConfirmDialog({ show: true, msg: settings.lang==='bn'?"এই হিস্ট্রি মুছবেন?":"Delete this record?", onConfirm: () => {
                              let svNew = { ...data.savings };
@@ -940,6 +949,7 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
     return { name: m, income: inc, expense: exp }; 
   }), [data.txs]);
 
+  // Asset & Liability Calculation
   const positiveWallets = (data.wallets || []).filter(w => Number(w.balance) > 0).reduce((s, w) => s + Number(w.balance), 0);
   const negativeWallets = (data.wallets || []).filter(w => Number(w.balance) < 0).reduce((s, w) => s + Math.abs(Number(w.balance)), 0);
 
@@ -966,26 +976,26 @@ function GraphsView({ data, fmt, TH, lang, getCategories }) {
             <div style={{ display:"flex", gap:14 }}>
                <div className="glass-panel" style={{ flex:1, padding:20, borderRadius:24, border:`1px solid rgba(16,185,129,0.3)` }}>
                   <p style={{fontSize:12, fontWeight:700, color:"#10b981"}}>{lang==='bn'?'মোট সম্পদ':'Total Assets'}</p>
-                  <p style={{fontFamily: 'Syne', fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalAssets)}</p>
+                  <p style={{fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalAssets)}</p>
                </div>
                <div className="glass-panel" style={{ flex:1, padding:20, borderRadius:24, border:`1px solid rgba(239,68,68,0.3)` }}>
                   <p style={{fontSize:12, fontWeight:700, color:"#ef4444"}}>{lang==='bn'?'মোট দায়':'Liabilities'}</p>
-                  <p style={{fontFamily: 'Syne', fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalLiabilities)}</p>
+                  <p style={{fontFamily:"'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize:20, fontWeight:800, marginTop:6, color:TH.text}}>{fmt(totalLiabilities)}</p>
                </div>
             </div>
             <div style={{ display:"flex", gap:14 }}>
                <div className="glass-panel" style={{ flex:1, padding:16, borderRadius:20, border:`1px solid rgba(59,130,246,0.3)` }}>
                   <p style={{fontSize:11, fontWeight:700, color:"#3b82f6"}}>{lang==='bn'?'মোট আয় (সব মিলিয়ে)':'Total Income'}</p>
-                  <p style={{fontFamily: 'Syne', fontSize:16, fontWeight:800, marginTop:4, color:TH.text}}>{fmt(totalIncAllTime)}</p>
+                  <p style={{fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize:16, fontWeight:800, marginTop:4, color:TH.text}}>{fmt(totalIncAllTime)}</p>
                </div>
                <div className="glass-panel" style={{ flex:1, padding:16, borderRadius:20, border:`1px solid rgba(245,158,11,0.3)` }}>
                   <p style={{fontSize:11, fontWeight:700, color:"#f59e0b"}}>{lang==='bn'?'মোট খরচ (সব মিলিয়ে)':'Total Expense'}</p>
-                  <p style={{fontFamily: 'Syne', fontSize:16, fontWeight:800, marginTop:4, color:TH.text}}>{fmt(totalExpAllTime)}</p>
+                  <p style={{fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize:16, fontWeight:800, marginTop:4, color:TH.text}}>{fmt(totalExpAllTime)}</p>
                </div>
             </div>
             <div className="glass-panel" style={{ padding:30, borderRadius:28, textAlign:"center", position:"relative", overflow:"hidden" }}>
                <p style={{fontSize:13, fontWeight:700, color:TH.textMid}}>{lang==='bn'?'নেট ওয়ার্থ (আসল সম্পদ)':'Net Worth'}</p>
-               <h2 style={{fontFamily: 'Syne', fontSize:36, fontWeight:800, margin:"10px 0", color: netWorth >= 0 ? "#10b981" : "#ef4444"}}>{fmt(netWorth)}</h2>
+               <h2 style={{fontFamily: "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif", fontSize:36, fontWeight:800, margin:"10px 0", color: netWorth >= 0 ? "#10b981" : "#ef4444"}}>{fmt(netWorth)}</h2>
                <p style={{fontSize:11, fontWeight:600, color:TH.textMid}}>{lang==='bn'?'সম্পদ - দায় = আসল মূল্য':'Assets - Liabilities'}</p>
             </div>
          </div>
