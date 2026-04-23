@@ -166,7 +166,7 @@ const DEFAULT_DATA = {
   debts: [], goals: [], budgets: {}, savings: { balance: 0, history: [] }, customCategories: { expense: [], income: [] }, dismissedAlerts: [], recurring: [], templates: [] 
 };
 
-const DEFAULT_SETTINGS = { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "", recoveryWord: "" };
+const DEFAULT_SETTINGS = { lang: "bn", curr: "BDT", theme: "dark", hideBalance: false, pinLock: "", recoveryWord: "",budgetAlertThreshold: 80 };
 export default function App() {
   const [data, setData] = useState(DEFAULT_DATA);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -233,7 +233,17 @@ export default function App() {
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const dbData = docSnap.data();
-            if (dbData.data) setData({ ...DEFAULT_DATA, ...dbData.data });
+            if (dbData.data) {
+            // 🔥 আপনার দেওয়া লজিক: পুরনো মাসের Alert Key গুলো ক্লিন করা
+            const currentMonth = TODAY().slice(0, 7);
+            const cleanedAlerts = (dbData.data.dismissedAlerts || []).filter(key => key.endsWith(currentMonth));
+            
+            setData({ 
+              ...DEFAULT_DATA, 
+              ...dbData.data, 
+              dismissedAlerts: cleanedAlerts 
+            });
+          }
             if (dbData.settings) {
               const mergedSet = { ...DEFAULT_SETTINGS, ...dbData.settings };
               setSettings(mergedSet);
@@ -252,11 +262,20 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // 🔥 ১. Firestore Debounce (১ সেকেন্ড পর পর সেভ হবে)
   useEffect(() => {
     if (firebaseUser && isDbLoaded) {
-      setDoc(doc(db, "users", firebaseUser.uid), { data, settings }).catch(e => console.error("Firebase Sync Error:", e));
+      const timeoutId = setTimeout(() => {
+        setDoc(doc(db, "users", firebaseUser.uid), { data, settings })
+          .catch(e => {
+            console.error("Firebase Sync Error:", e);
+          });
+      }, 1000); // ১ সেকেন্ড ডিলয় (Debounce)
+      
+      return () => clearTimeout(timeoutId); // ইউজার টাইপ করলে আগের টাইমার বাতিল হবে
     }
   }, [data, settings, firebaseUser, isDbLoaded]);
+
 
   useEffect(() => {
     if(!isDbLoaded || !data.recurring || data.recurring.length === 0) return;
@@ -456,11 +475,17 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
   const monthlySav = data.savings?.history?.filter(x => x.type === 'deposit' && x.date.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0) || 0;
   const overdueDebts = data.debts.filter(d => d.returnDate && d.returnDate < TODAY() && d.type === "lend");
   
+ // 🔥 ৩. Monthly Budget Alert Logic
+  // 🔥 ৩. Monthly Budget Alert Logic (Dynamic Threshold)
+  const alertThreshold = settings.budgetAlertThreshold || 80;
   const activeAlerts = getCategories("expense").filter(cat => {
-    if (data.dismissedAlerts?.includes(cat.id)) return false;
-    const lim = data.budgets[cat.id]; if (!lim) return false;
+    const alertKey = `${cat.id}-${currentMonth}`; 
+    if (data.dismissedAlerts?.includes(alertKey)) return false; 
+    
+    const lim = data.budgets[cat.id]; 
+    if (!lim) return false;
     const spent = data.txs.filter(x => x.type === "expense" && x.category === cat.id && x.date.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0);
-    return spent >= lim * 0.8;
+    return spent >= lim * (alertThreshold / 100); // 🔴 ডায়নামিক পার্সেন্টেজ
   });
 
   const filteredTxs = data.txs.filter(tx => {
@@ -472,13 +497,31 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
     const matchSearch = !s || tx.note?.toLowerCase().includes(s) || cat?.label?.bn?.includes(s) || cat?.label?.en?.toLowerCase().includes(s) || tagMatch;
     return matchFilter && matchSearch;
   });
+  // 🔥 Transaction Statistics (সর্বোচ্চ খরচ এবং দৈনিক গড়)
+  const currentMonthExpTxs = data.txs.filter(x => x.type === "expense" && x.date.startsWith(currentMonth));
+  const catSums = {};
+  currentMonthExpTxs.forEach(tx => { catSums[tx.category] = (catSums[tx.category] || 0) + tx.amount; });
+  const topCatId = Object.keys(catSums).reduce((a, b) => catSums[a] > catSums[b] ? a : b, null);
+  const topCategory = topCatId ? getCategories("expense").find(c => c.id === topCatId) : null;
+  
+  const currentDay = new Date(TODAY()).getDate() || 1; 
+  const avgDailyExp = monthlyExp / currentDay;
 
+// 🔥 ২. CSV Export with BOM
   const exportCSV = () => {
     const headers = "Date,Type,Category,Amount,Note,Tags,Receipt\n";
-    const rows = data.txs.map(t => { const cat = getCategories(t.type).find(c => c.id === t.category); return `${formatDate(t.date)},${t.type},${cat ? cat.label.en : t.category},${t.amount},"${t.note||''}","${t.tags?t.tags.join(' '):''}","${t.imageUrl||''}"`; }).join("\n");
-    const blob = new Blob([headers + rows], {type: "text/csv;charset=utf-8;"}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `NaFinance_${TODAY()}.csv`; link.click();
+    const rows = data.txs.map(t => { 
+      const cat = getCategories(t.type).find(c => c.id === t.category); 
+      return `${formatDate(t.date)},${t.type},${cat ? (cat.label.bn || cat.label.en) : t.category},${t.amount},"${t.note||''}","${t.tags?t.tags.join(' '):''}","${t.imageUrl||''}"`; 
+    }).join("\n");
+    
+    // \uFEFF যোগ করা হলো যাতে Excel ঠিকমতো বাংলা রিড করতে পারে
+    const blob = new Blob(["\uFEFF" + headers + rows], {type: "text/csv;charset=utf-8;"}); 
+    const link = document.createElement("a"); 
+    link.href = URL.createObjectURL(blob); 
+    link.download = `NaFinance_${TODAY()}.csv`; 
+    link.click();
   };
-
   const exportPDF = () => {
     const win = window.open('', '', 'height=800,width=1000');
     let html = `<html lang="en"><head><title>NaFinance Report</title><style> body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; color: #333; } h2 { text-align: center; color: #8b5cf6; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th, td { border: 1px solid #ddd; padding: 12px; text-align: left; } th { background-color: #8b5cf6; color: white; } .inc { color: #10b981; } .exp { color: #ef4444; } </style></head><body><h2>NaFinance - Statement</h2><p style="text-align:center">Date: ${formatDate(TODAY())}</p><table><tr><th>Date</th><th>Category</th><th>Wallet</th><th>Note</th><th>Type</th><th>Amount</th></tr>`;
@@ -489,7 +532,24 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {overdueDebts.map(d => (<div key={`od-${d.id}`} className="animate-scale" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", padding: "14px 18px", borderRadius: 20, display: "flex", alignItems: "center", gap: 12, color: "#ef4444" }}><AlertTriangle size={18}/> <span style={{fontSize:13, fontWeight:700}}>{settings.lang==='bn'?'ওভারডিউ ধার:':'Overdue Debt:'} {d.person} ({fmt(d.amount)})</span></div>))}
-      {activeAlerts.map(cat => (<div key={cat.id} className="animate-scale" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", padding: "14px 18px", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}><div style={{display:"flex", alignItems:"center", gap: 12}}><AlertTriangle size={18} color="#f59e0b"/> <span style={{fontSize:13, fontWeight:700, color:TH.text}}>{cat.icon} {cat.label[settings.lang] || cat.label['en']} {settings.lang==='bn'?'বাজেট ৮০% শেষ!':'80% budget used!'}</span></div><button onClick={() => setData({ ...data, dismissedAlerts: [...(data.dismissedAlerts || []), cat.id] })} style={{background:"none", border:"none", color: TH.textMid, cursor:"pointer"}}><X size={18}/></button></div>))}
+      {activeAlerts.map(cat => {
+        const alertKey = `${cat.id}-${currentMonth}`; // ইউনিক কী
+        return (
+          <div key={cat.id} className="animate-scale" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", padding: "14px 18px", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{display:"flex", alignItems:"center", gap: 12}}>
+              <AlertTriangle size={18} color="#f59e0b"/> 
+              <span style={{fontSize:13, fontWeight:700, color:TH.text}}>
+  {cat.icon} {cat.label[settings.lang] || cat.label['en']} {settings.lang==='bn'? `বাজেট ${alertThreshold}% শেষ!` : `${alertThreshold}% budget used!`}
+</span>
+            </div>
+            <button 
+              onClick={() => setData({ ...data, dismissedAlerts: [...(data.dismissedAlerts || []), alertKey] })} 
+              style={{background:"none", border:"none", color: TH.textMid, cursor:"pointer"}}>
+              <X size={18}/>
+            </button>
+          </div>
+        );
+      })}
       
       <div style={{ padding: "28px 24px", borderRadius: 28, background: "var(--balance-bg)", border: `1px solid var(--balance-border)`, position: "relative", overflow: "hidden", boxShadow: `0 15px 40px rgba(0,0,0,0.2)` }}>
         <div style={{ position: "absolute", top: -70, right: -70, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, var(--gold-glow) 0%, transparent 65%)" }}/>
@@ -520,7 +580,30 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
           </div>
         </div>
       </div>
-
+{/* 🔥 Transaction Stats Card */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+        <div className="glass-panel animate-scale" style={{ flex: 1, padding: "16px 14px", borderRadius: 20, display: "flex", alignItems: "center", gap: 12 }}>
+           <div style={{ width: 42, height: 42, borderRadius: 14, background: "rgba(239,68,68,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <TrendingDown size={20} color="#ef4444" />
+           </div>
+           <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: TH.textMid, textTransform: "uppercase" }}>{settings.lang==='bn'?'সর্বোচ্চ খরচ':'Top Expense'}</p>
+              <p style={{ fontSize: 14, fontWeight: 800, color: TH.text, marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                {topCategory ? <>{topCategory.icon} {topCategory.label[settings.lang] || topCategory.label['en']}</> : '-'}
+              </p>
+           </div>
+        </div>
+        
+        <div className="glass-panel animate-scale" style={{ flex: 1, padding: "16px 14px", borderRadius: 20, display: "flex", alignItems: "center", gap: 12 }}>
+           <div style={{ width: 42, height: 42, borderRadius: 14, background: "rgba(59,130,246,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Activity size={20} color="#3b82f6" />
+           </div>
+           <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: TH.textMid, textTransform: "uppercase" }}>{settings.lang==='bn'?'দৈনিক গড়':'Daily Avg'}</p>
+              <p className="amount-font" style={{ fontSize: 16, fontWeight: 800, color: TH.text, marginTop: 2 }}>{fmt(avgDailyExp)}</p>
+           </div>
+        </div>
+      </div>
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={exportCSV} className="glass-panel" style={{ flex:1, padding:"12px", borderRadius:16, color:TH.text, fontWeight:700, border:"none", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, cursor:"pointer" }}><Download size={16} color="#10b981"/> CSV</button>
         <button onClick={exportPDF} className="glass-panel" style={{ flex:1, padding:"12px", borderRadius:16, color:TH.text, fontWeight:700, border:"none", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, cursor:"pointer" }}><FileText size={16} color="#ef4444"/> PDF</button>
