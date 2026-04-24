@@ -31,20 +31,29 @@ export default function TxModal({
       // 🔥 f (যার ভেতর note আছে) সেটা সহ সব ডেটা সেভ হচ্ছে
     // যদি editData থাকে তবে তার আইডি ব্যবহার হবে, না থাকলে নতুন আইডি তৈরি হবে
       const finalId = editData?.id ? editData.id : Date.now().toString();
-      
-      saveTx({ 
-        ...f, 
-        type, 
-        amount: Number(f.amount), 
-        id: finalId, 
-        tags: parsedTags, 
-        imageUrl: finalUrl, 
-        date: f.date },editData);
-       } catch (err) {
-      showToast(lang === 'bn' ? "ব্যর্থ হয়েছে!" : "Failed!", "error");
-    } finally { setUploading(false); }
-  };
+      saveTx({
+        ...f,
+        type,
+        amount: Number(f.amount),
+        id: finalId,
+        tags: parsedTags,
+        imageUrl: finalUrl,
+        date: f.date 
+      }, editData);
 
+      // ডেটা সেভ হওয়ার পর ফর্ম খালি করে উইন্ডো বন্ধ করার কমান্ড
+      setF({ amount: "", note: "" }); 
+      setTagInput("");
+      setFile(null);
+      onClose();
+
+    } catch (err) {
+      showToast(lang === 'bn' ? "ব্যর্থ হয়েছে!" : "Failed!", "error");
+    } finally {
+      setUploading(false);
+    }
+  }
+  
   return (
     <div className="animate-fade notranslate" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
       <div className="animate-slide glass-panel" style={{ background: TH.bgCard, width: "100%", maxWidth: 400, borderRadius: 28, padding: 24, position: "relative", boxShadow: '0 25px 50px rgba(0,0,0,0.5)', border: `1px solid ${TH.border}` }}>

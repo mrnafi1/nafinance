@@ -565,11 +565,54 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
   };
   const exportPDF = () => {
     const win = window.open('', '', 'height=800,width=1000');
-    let html = `<html lang="en"><head><title>NaFinance Report</title><style> body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; color: #333; } h2 { text-align: center; color: #8b5cf6; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th, td { border: 1px solid #ddd; padding: 12px; text-align: left; } th { background-color: #8b5cf6; color: white; } .inc { color: #10b981; } .exp { color: #ef4444; } </style></head><body><h2>NaFinance - Statement</h2><p style="text-align:center">Date: ${formatDate(TODAY())}</p><table><tr><th>Date</th><th>Category</th><th>Wallet</th><th>Note</th><th>Type</th><th>Amount</th></tr>`;
-    data.txs.forEach(tx => { const cat = getCategories(tx.type).find(c => c.id === tx.category) || {label:{en:'Other'}}; const w = data.wallets.find(w => w.id === tx.walletId) || {name: 'Unknown'}; html += `<tr><td>${formatDate(tx.date)}</td><td>${cat.label.en}</td><td>${w.name}</td><td>${tx.note || '-'} ${tx.tags?.length ? `(${tx.tags.join(', ')})` : ''}</td><td class="${tx.type === 'income' ? 'inc' : 'exp'}">${tx.type.toUpperCase()}</td><td class="${tx.type === 'income' ? 'inc' : 'exp'}">${fmtMoney(tx.amount, settings.curr, 'en')}</td></tr>`; });
-    html += `</table></body></html>`; win.document.write(html); win.document.close(); setTimeout(() => win.print(), 800); 
-  };
+    let html = `<html><head><title>NaFinance Report</title><style>
+      body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; color: #333; }
+      h2 { text-align: center; color: #8b5cf6; }
+      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+      th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+      th { background-color: #8b5cf6; color: white; }
+      .inc { color: #10b981; }
+      .exp { color: #ef4444; }
+    </style></head><body><h2>NaFinance - Statement</h2><p style="text-align:center">Date: ${formatDate(TODAY())}</p>
+    <table><tr><th>Date</th><th>Category</th><th>Wallet</th><th>Note</th><th>Type</th><th>Amount</th></tr>`;
 
+    data.txs.forEach(tx => {
+      const cat = getCategories(tx.type).find(c => c.id === tx.category) || { label: { en: 'Other' } };
+      const w = data.wallets.find(w => w.id === tx.walletId) || { name: 'Unknown' };
+      html += `<tr>
+        <td>${formatDate(tx.date)}</td>
+        <td>${cat.label.en}</td>
+        <td>${w.name}</td>
+        <td>${tx.note || '-'} ${tx.tags?.length ? `(${tx.tags.join(', ')})` : ''}</td>
+        <td class="${tx.type === 'income' ? 'inc' : 'exp'}">${tx.type.toUpperCase()}</td>
+        <td class="${tx.type === 'income' ? 'inc' : 'exp'}">${fmtMoney(tx.amount, settings.curr, 'en')}</td>
+      </tr>`;
+    });
+
+    // সামারি ক্যালকুলেশন (ট্রান্সফার বাদ দিয়ে)
+    const totalInc = (data.txs || []).filter(t => t.type === 'income' && t.category !== 'Transfer').reduce((s, t) => s + Number(t.amount || 0), 0);
+    const totalExp = (data.txs || []).filter(t => t.type === 'expense' && t.category !== 'Transfer').reduce((s, t) => s + Number(t.amount || 0), 0);
+    const net = totalInc - totalExp;
+
+    html += `</table>
+      <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 1px solid #ddd; font-family: sans-serif;">
+        <h3 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #eee; padding-bottom: 8px;">হিসাবের সারসংক্ষেপ (Summary)</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <p style="margin: 0; font-size: 16px;"><strong>মোট আয়:</strong> <span style="color: #10b981; font-weight: bold;">${fmtMoney(totalInc, settings.curr, 'en')}</span></p>
+          <p style="margin: 0; font-size: 16px;"><strong>মোট ব্যয়:</strong> <span style="color: #ef4444; font-weight: bold;">${fmtMoney(totalExp, settings.curr, 'en')}</span></p>
+          <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc;">
+            <p style="margin: 0; font-size: 18px;"><strong>নিট ব্যালেন্স:</strong> <span style="color: ${net >= 0 ? '#10b981' : '#ef4444'}; font-weight: bold;">${fmtMoney(net, settings.curr, 'en')}</span></p>
+          </div>
+        </div>
+      </div>
+    </body></html>`;
+
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => {
+      win.print();
+    }, 800);
+  };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {overdueDebts.map(d => (<div key={`od-${d.id}`} className="animate-scale" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", padding: "14px 18px", borderRadius: 20, display: "flex", alignItems: "center", gap: 12, color: "#ef4444" }}><AlertTriangle size={18}/> <span style={{fontSize:13, fontWeight:700}}>{settings.lang==='bn'?'ওভারডিউ ধার:':'Overdue Debt:'} {d.person} ({fmt(d.amount)})</span></div>))}
@@ -762,14 +805,17 @@ function AssetsView({ data, setData, fmt, TH, showToast, settings, setConfirmDia
     let ws = [...data.wallets]; const fromIdx = ws.findIndex(w => w.id === transferForm.from); const toIdx = ws.findIndex(w => w.id === transferForm.to);
     if (fromIdx === -1 || toIdx === -1) return showToast("Wallet error", "error");
     if (ws[fromIdx].balance < amt) return showToast(settings.lang==='bn'?"টাকা নেই":"Insufficient Balance", "error");
+    
     ws[fromIdx].balance -= amt; ws[toIdx].balance += amt;
     const fromName = ws[fromIdx].name; const toName = ws[toIdx].name;
-    const txOut = { id: genId(), type: 'expense', date: TODAY(), amount: amt, category: 'other_ex', walletId: transferForm.from, note: `Transfer to ${toName} ${transferForm.note ? `(${transferForm.note})` : ''}`, tags:[] };
-    const txIn = { id: genId(), type: 'income', date: TODAY(), amount: amt, category: 'other_in', walletId: transferForm.to, note: `Transfer from ${fromName} ${transferForm.note ? `(${transferForm.note})` : ''}`, tags:[] };
+    
+    // 🔥 ম্যাজিকটা এখানে: category 'other_ex'/'other_in' এর বদলে 'transfer' দেওয়া হলো
+    const txOut = { id: genId(), type: 'expense', date: TODAY(), amount: amt, category: 'transfer', walletId: transferForm.from, note: `Transfer to ${toName} ${transferForm.note ? `(${transferForm.note})` : ''}`, tags:[] };
+    const txIn = { id: genId(), type: 'income', date: TODAY(), amount: amt, category: 'transfer', walletId: transferForm.to, note: `Transfer from ${fromName} ${transferForm.note ? `(${transferForm.note})` : ''}`, tags:[] };
+    
     setData({ ...data, wallets: ws, txs: [txOut, txIn, ...data.txs] });
     setTransferForm({ ...transferForm, show: false, amount: "", note: "" }); showToast(settings.lang==='bn'?"ট্রান্সফার সফল!":"Transfer Success!", "success");
   };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -1124,11 +1170,11 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
   const totalExpAllTime = (data.txs || []).filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0);
   
   return (
-    <div className="animate-slide" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+  <div className="animate-slide" style={{ display: "flex", flexDirection: "column", gap: 20 }}> 
       {/* 🔥 নতুন Heatmap অপশন মেনুতে যোগ করা হলো */}
-      <div className="glass-panel" style={{ display: "flex", padding: 6, borderRadius: 20, flexWrap: "wrap" }}>
+  <div className="glass-panel" style={{ display: "flex", alignItems: "center", padding: 6, borderRadius: 20, gap: "10px", overflowX: "auto", scrollbarWidth: "none" }}>   
         {['breakdown', 'weekly', 'monthly', 'heatmap', 'net worth'].map(t => (
-          <button key={t} onClick={()=>setGType(t)} style={{ flex: 1, minWidth: "18%", padding: "12px 2px", borderRadius: 16, background: gType===t ? "var(--gold-bg)" : "transparent", color: gType===t ? "var(--gold-primary)" : TH.textMid, fontWeight: 700, border: "none", fontSize: 11, textTransform:"uppercase", transition: "0.3s", cursor:"pointer" }}>
+          <button key={t} onClick={()=>setGType(t)} style={{ flexShrink: 0, padding: "10px 16px", borderRadius: 16, background: gType===t ? "var(--gold-bg)" : "transparent", color: gType===t ? "var(--gold-primary)" : TH.textMid, fontWeight: 700, border: "none", fontSize: 11, textTransform: "uppercase", transition: "0.3s", cursor: "pointer" }}>
             {t}
           </button>
         ))}
