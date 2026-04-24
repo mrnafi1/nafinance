@@ -1106,7 +1106,7 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
 
   function GraphsView({ data, fmt, TH, lang, getCategories }) {
   const [gType, setGType] = useState("breakdown");
-  
+  const [selectedDay, setSelectedDay] = useState(null); // ক্লিক করা দিনের তথ্য রাখার জন্য
   const weeklyData = useMemo(() => Array.from({length: 7}).map((_, i) => { 
     const d = new Date(); d.setDate(d.getDate() - (6 - i)); const s = d.toISOString().split('T')[0]; 
     const inc = data.txs.filter(t => t.type === "income" && t.date === s).reduce((sum, t) => sum + Number(t.amount || 0), 0); 
@@ -1122,39 +1122,26 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
   }), [data.txs]);
 
   // 🔥 নতুন হিটম্যাপ লজিক (গত ৬০ দিনের খরচ)
+// ১. হিটম্যাপ ডেটা তৈরির সঠিক লজিক
   const heatmapData = useMemo(() => {
     const days = [];
     const today = new Date();
-    let maxExp = 0;
     const expByDate = {};
-    
-    // দিনের হিসেবে খরচ গ্রুপ করা
-    data.txs.filter(t => t.type === 'expense').forEach(t => {
-      expByDate[t.date] = (expByDate[t.date] || 0) + Number(t.amount);
+
+    // খরচগুলো ডেট অনুযায়ী গ্রুপ করা (Transfer বাদ দিয়ে)
+    (data.txs || []).filter(t => t.type === 'expense' && t.category !== 'Transfer').forEach(t => {
+      expByDate[t.date] = (expByDate[t.date] || 0) + Number(t.amount || 0);
     });
-    
+
     for (let i = 59; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
       const exp = expByDate[dateStr] || 0;
-      if(exp > maxExp) maxExp = exp;
-      days.push({ date: dateStr, amount: exp });
+      days.push({ date: dateStr, value: exp }); // এখানে 'value' ব্যবহার করলাম যাতে পরের কোডের সাথে মিলে যায়
     }
-    
-    // খরচের ওপর ভিত্তি করে লেভেল (০ থেকে ৪) সেট করা
-    return days.map(d => {
-      let level = 0;
-      if (d.amount > 0) {
-        if (d.amount > maxExp * 0.75) level = 4; // ডেঞ্জার জোন (সবচেয়ে গাঢ়)
-        else if (d.amount > maxExp * 0.5) level = 3;
-        else if (d.amount > maxExp * 0.25) level = 2;
-        else level = 1; // অল্প খরচ
-      }
-      return { ...d, level };
-    });
+    return days; // সরাসরি অ্যারে রিটার্ন করছি
   }, [data.txs]);
-
   // Asset & Liability Calculation
   const positiveWallets = (data.wallets || []).filter(w => Number(w.balance) > 0).reduce((s, w) => s + Number(w.balance), 0);
   const negativeWallets = (data.wallets || []).filter(w => Number(w.balance) < 0).reduce((s, w) => s + Math.abs(Number(w.balance)), 0);
@@ -1215,33 +1202,63 @@ function PlanningView({ data, setData, fmt, TH, settings, getCategories, showToa
                {lang === 'bn' ? 'গত ৬০ দিনের খরচের চিত্র' : 'Last 60 Days Spending Heatmap'}
             </h3>
             
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: 320, width: "100%" }}>
-              {heatmapData.map((d, i) => {
-                const colors = [
-                   TH.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', // Level 0 (খালি)
-                   'rgba(239, 68, 68, 0.3)', // Level 1 (হালকা)
-                   'rgba(239, 68, 68, 0.5)', // Level 2
-                   'rgba(239, 68, 68, 0.8)', // Level 3
-                   '#ef4444'                 // Level 4 (সবচেয়ে গাঢ়)
-                ];
-                return (
-                  <div 
-                    key={i} 
-                    title={`${d.date} • ${fmt(d.amount)}`} // হোভার করলে বা চাপ দিলে ডেটা দেখাবে
-                    style={{
-                      width: 22, 
-                      height: 22, 
-                      borderRadius: 6, 
-                      background: colors[d.level],
-                      cursor: "pointer",
-                      transition: "all 0.2s ease"
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.2)"}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                  />
-                )
-              })}
-            </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", position: "relative" }}>
+  {heatmapData.map((d, i) => {
+    const level = d.value === 0 ? 0 : d.value < 500 ? 1 : d.value < 2000 ? 2 : d.value < 5000 ? 3 : 4;
+    const colors = [
+      TH.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)',
+      'rgba(239, 68, 68, 0.3)', 'rgba(239, 68, 68, 0.5)', 'rgba(239, 68, 68, 0.8)', '#ef4444'
+    ];
+
+    return (
+      <div
+        key={i}
+        onClick={() => setSelectedDay(selectedDay?.date === d.date ? null : d)}
+        style={{
+          width: "14px", height: "14px", borderRadius: "4px",
+          background: selectedDay?.date === d.date ? "var(--gold-bg)" : colors[level],
+          cursor: "pointer", transition: "all 0.3s ease",
+          boxShadow: selectedDay?.date === d.date ? "0 0 10px var(--gold-primary)" : "none",
+          transform: selectedDay?.date === d.date ? "scale(1.3)" : "scale(1)"
+        }}
+      />
+    );
+  })}
+</div>
+
+{/* --- প্রিমিয়াম ডিটেইলস কার্ড --- */}
+<div style={{ 
+  height: "60px", 
+  marginTop: "20px", 
+  display: "flex", 
+  alignItems: "center", 
+  justifyContent: "center" 
+}}>
+  {selectedDay ? (
+    <div className="animate-scale" style={{
+      background: TH.bgInner,
+      padding: "10px 20px",
+      borderRadius: "15px",
+      border: `1px solid ${TH.border}`,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+      backdropFilter: "blur(10px)"
+    }}>
+      <span style={{ fontSize: "11px", color: TH.textMid, fontWeight: "600", textTransform: "uppercase", letterSpacing: "1px" }}>
+        {formatDate(selectedDay.date)}
+      </span>
+      <span style={{ fontSize: "18px", color: selectedDay.value > 0 ? "#ef4444" : TH.text, fontWeight: "800" }}>
+        {fmt(selectedDay.value)}
+      </span>
+    </div>
+  ) : (
+    <p style={{ color: TH.textMid, fontSize: "12px", fontStyle: "italic" }}>
+      {lang === 'bn' ? 'যেকোনো বক্স ক্লিক করে হিসাব দেখুন' : 'Click any box to see details'}
+    </p>
+  )}
+</div>
             
             {/* কালার ইনডেক্স (বুঝার সুবিধার জন্য) */}
             <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap: 10, marginTop: 40, fontSize: 12, color: TH.textMid, fontWeight: 700 }}>
