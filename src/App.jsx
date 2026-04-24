@@ -540,12 +540,28 @@ function HomeView({ data, setData, fmt, TH, settings, setSettings, getCategories
     const matchSearch = !s || tx.note?.toLowerCase().includes(s) || cat?.label?.bn?.includes(s) || cat?.label?.en?.toLowerCase().includes(s) || tagMatch;
     return matchFilter && matchSearch;
   });
-  // 🔥 Transaction Statistics (সর্বোচ্চ খরচ এবং দৈনিক গড়)
-  const currentMonthExpTxs = data.txs.filter(x => x.type === "expense" && x.date.startsWith(currentMonth));
+  // 🔥 Transaction Statistics (সর্বোচ্চ খরচ এবং দৈনিক গড়) - Bulletproof Version
+  const currentMonthExpTxs = data.txs.filter(x => 
+    x.type === "expense" && 
+    x.category && // ক্যাটাগরি ফাঁকা থাকলে বাদ দেবে
+    x.category.toLowerCase() !== "transfer" && // Transfer বা transfer যাই হোক না কেন, বাদ দেবে
+    x.date.startsWith(currentMonth)
+  );
+  
   const catSums = {};
-  currentMonthExpTxs.forEach(tx => { catSums[tx.category] = (catSums[tx.category] || 0) + tx.amount; });
-  const topCatId = Object.keys(catSums).reduce((a, b) => catSums[a] > catSums[b] ? a : b, null);
-  const topCategory = topCatId ? getCategories("expense").find(c => c.id === topCatId) : null;
+  currentMonthExpTxs.forEach(tx => { 
+    catSums[tx.category] = (catSums[tx.category] || 0) + Number(tx.amount || 0); 
+  });
+  
+  const topCatId = Object.keys(catSums).length > 0 
+    ? Object.keys(catSums).reduce((a, b) => catSums[a] > catSums[b] ? a : b) 
+    : null;
+    
+  // যদি ক্যাটাগরি ডিলিট হয়ে গিয়ে থাকে, তবে ক্র্যাশ না করে 'অন্যান্য' (Other) দেখাবে
+  const topCategory = topCatId 
+    ? (getCategories("expense").find(c => c.id === topCatId) || { label: { bn: "অন্যান্য", en: "Other" }, icon: "📝" }) 
+    : null;
+  
 
   const currentDay = new Date(TODAY()).getDate();
   const avgDailyExp = monthlyExp / currentDay;
