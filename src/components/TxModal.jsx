@@ -15,45 +15,56 @@ export default function TxModal({
   const [uploading, setUploading] = useState(false);
 
   const handleFinalSave = async () => {
+    // ৬. অ্যামাউন্ট ভ্যালিডেশন (টাকার পরিমাণ খালি বা শূন্য হলে সেভ হবে না)
     if (!f.amount || Number(f.amount) <= 0) {
-      showToast(lang === 'bn' ? "সঠিক পরিমাণ দিন!" : "Enter a valid amount", "error");
+      showToast(lang === 'bn' ? "সঠিক পরিমাণ লিখুন" : "Enter a valid amount", "error");
       return;
     }
+
     setUploading(true);
     let finalUrl = f.imageUrl || null;
+
     try {
+      // যদি নতুন ইমেজ থাকে তবে আপলোড হবে
       if (file && firebaseUser && storage) {
-        const fileRef = ref(storage, `receipts/${firebaseUser.uid}/${Date.now()}_${file.name}`);
+        const fileRef = ref(storage, `receipts/${firebaseUser.uid}/${Date.now()}`);
         await uploadBytes(fileRef, file);
         finalUrl = await getDownloadURL(fileRef);
       }
+
+      // ১. আইডি জেনারেট করা
+      const finalId = editData?.id || Date.now().toString();
+      
+      // ২. ট্যাগ প্রসেস করা
       const parsedTags = tagInput ? tagInput.split(',').map(t => t.trim()).filter(Boolean) : [];
-      // 🔥 f (যার ভেতর note আছে) সেটা সহ সব ডেটা সেভ হচ্ছে
-    // যদি editData থাকে তবে তার আইডি ব্যবহার হবে, না থাকলে নতুন আইডি তৈরি হবে
-      const finalId = editData?.id ? editData.id : Date.now().toString();
-      saveTx({
+
+      // ৩. ডাটা অবজেক্ট তৈরি
+      const updatedTx = {
         ...f,
         type,
         amount: Number(f.amount),
         id: finalId,
         tags: parsedTags,
         imageUrl: finalUrl,
-        date: f.date 
-      }, editData);
+        date: f.date
+      };
 
-      // ডেটা সেভ হওয়ার পর ফর্ম খালি করে উইন্ডো বন্ধ করার কমান্ড
-      setF({ amount: "", note: "" }); 
+      // ৫. ডাটা সেভ করা (এখান থেকে await সরানো হয়েছে)
+      saveTx(updatedTx, editData);
+
+      // ৪. সফল হলে ফর্ম ক্লিয়ার ও বন্ধ করা
+      setF({ amount: "", note: "" });
       setTagInput("");
       setFile(null);
       onClose();
 
     } catch (err) {
+      console.error(err);
       showToast(lang === 'bn' ? "ব্যর্থ হয়েছে!" : "Failed!", "error");
     } finally {
       setUploading(false);
     }
-  }
-  
+  };
   return (
     <div className="animate-fade notranslate" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
       <div className="animate-slide glass-panel" style={{ background: TH.bgCard, width: "100%", maxWidth: 400, borderRadius: 28, padding: 24, position: "relative", boxShadow: '0 25px 50px rgba(0,0,0,0.5)', border: `1px solid ${TH.border}` }}>

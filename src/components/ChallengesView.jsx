@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Trophy, Target, X, ArrowDownCircle } from 'lucide-react';
 
-export default function ChallengesView({ data, setData, fmt, TH, lang, showToast }) {
+export default function ChallengesView({ data, setData, fmt, TH, lang, showToast, setConfirmDialog }) {
   const [showForm, setShowForm] = useState(false);
   const [cName, setCName] = useState("");
   const [cTarget, setCTarget] = useState("");
@@ -10,6 +10,7 @@ export default function ChallengesView({ data, setData, fmt, TH, lang, showToast
   // টাকা জমার জন্য স্টেট
   const [depoId, setDepoId] = useState(null);
   const [depoAmt, setDepoAmt] = useState("");
+
   const [depoWallet, setDepoWallet] = useState(data.wallets?.[0]?.id || "");
 
   const challenges = data.challenges || [];
@@ -32,18 +33,25 @@ export default function ChallengesView({ data, setData, fmt, TH, lang, showToast
     setData({ ...data, challenges: [newChallenge, ...challenges] });
     setShowForm(false);
     setCName(""); setCTarget(""); setCWeeks("");
-    showToast(lang === 'bn' ? "নতুন চ্যালেঞ্জ শুরু হয়েছে!" : "New Challenge Started!", "success");
+    showToast(lang === 'bn' ? "নতুন চ্যালেঞ্জ শুরু হয়েছে!" : "New Challenge Started!", "success");
   };
 
   const handleDelete = (id) => {
-    const isConfirmed = window.confirm(lang === 'bn' ? "চ্যালেঞ্জটি ডিলিট করতে চান?" : "Delete this challenge?");
-    if (isConfirmed) {
-      setData({ ...data, challenges: challenges.filter(c => c.id !== id) });
-      showToast(lang === 'bn' ? "মুছে ফেলা হয়েছে" : "Deleted", "success");
-    }
+    setConfirmDialog({
+      show: true,
+      msg: lang === 'bn' ? "চ্যালেঞ্জটি ডিলিট করতে চান?" : "Are you sure you want to delete this challenge?",
+      onConfirm: () => {
+        // ডিলিট করার লজিক
+        setData({ ...data, challenges: challenges.filter(c => c.id !== id) });
+        showToast(lang === 'bn' ? "মুছে ফেলা হয়েছে" : "Deleted", "success");
+
+        // কাজ শেষ হলে ডায়ালগ বন্ধ করা
+        setConfirmDialog({ show: false });
+      }
+    });
   };
 
-  // 🔥 চ্যালেঞ্জে টাকা জমা দেওয়ার ফাংশন
+  // 🔥 চ্যালেঞ্জে টাকা জমা দেওয়ার ফাংশন
   const handleDeposit = (c) => {
     const amt = Number(depoAmt);
     if (!amt || amt <= 0) {
@@ -53,27 +61,30 @@ export default function ChallengesView({ data, setData, fmt, TH, lang, showToast
 
     const walletIdx = data.wallets.findIndex(w => w.id === depoWallet);
     if (walletIdx === -1 || data.wallets[walletIdx].balance < amt) {
-      showToast(lang === 'bn' ? "ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই!" : "Insufficient balance in wallet!", "error");
+      showToast(lang === 'bn' ? "ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই!" : "Insufficient balance in wallet!", "error");
       return;
     }
 
-    // ১. ওয়ালেট থেকে টাকা কাটা
+    // ১. ওয়ালেট থেকে টাকা কাটা
     const updatedWallets = [...data.wallets];
-    updatedWallets[walletIdx] = { ...updatedWallets[walletIdx], balance: updatedWallets[walletIdx].balance - amt };
+    updatedWallets[walletIdx] = {
+      ...updatedWallets[walletIdx],
+      balance: Number(updatedWallets[walletIdx].balance) - Number(amt)
+    };
 
     // ২. হিসাব মেলানোর জন্য ট্রানজেকশনে একটা এন্ট্রি করা (Expense হিসেবে)
     const newTx = {
       id: Date.now().toString(),
       type: 'expense',
-      amount: amt,
+      amount: Number(amt),
       walletId: depoWallet,
-      category: 'savings_challenge', 
+      category: 'other_ex',
       date: new Date().toISOString().split('T')[0],
       note: `চ্যালেঞ্জে জমা: ${c.title}`
     };
 
     // ৩. চ্যালেঞ্জের জমানো টাকা (saved) আপডেট করা
-    const updatedChallenges = challenges.map(ch => 
+    const updatedChallenges = challenges.map(ch =>
       ch.id === c.id ? { ...ch, saved: (ch.saved || 0) + amt } : ch
     );
 
@@ -87,22 +98,23 @@ export default function ChallengesView({ data, setData, fmt, TH, lang, showToast
 
     setDepoId(null);
     setDepoAmt("");
-    showToast(lang === 'bn' ? `সফলভাবে ${fmt(amt)} জমা হয়েছে!` : `Deposited ${fmt(amt)} successfully!`, "success");
-  };
+    showToast(lang === 'bn' ? `সফলভাবে ${fmt(amt)} জমা হয়েছে!` : `Deposited ${fmt(amt)} successfully!`, "success");
+  }; // <--- handleDeposit ঠিক এখানে শেষ হলো
 
+  // মেইন ফাংশনের রিটার্ন শুরু
   return (
     <div className="animate-slide" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ color: TH.text, fontWeight: 800, fontSize: 18, display: "flex", alignItems: "center", gap: 8 }}>
-          <Trophy size={20} color="#fbbf24" /> 
+          <Trophy size={20} color="#fbbf24" />
           {lang === 'bn' ? 'সেভিংস চ্যালেঞ্জ' : 'Savings Challenges'}
         </h3>
-        <button 
-          onClick={() => setShowForm(!showForm)} 
+        <button
+          onClick={() => setShowForm(!showForm)}
           style={{ background: TH.primary, color: "#000", border: "none", padding: "8px 16px", borderRadius: 14, fontWeight: 800, display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}
         >
-          {showForm ? <X size={16} /> : <Plus size={16} />} 
+          {showForm ? <X size={16} /> : <Plus size={16} />}
           {showForm ? (lang === 'bn' ? 'বাতিল' : 'Cancel') : (lang === 'bn' ? 'নতুন' : 'Add New')}
         </button>
       </div>
@@ -146,23 +158,25 @@ export default function ChallengesView({ data, setData, fmt, TH, lang, showToast
                   <span>🎯 {lang === 'bn' ? 'লক্ষ্য:' : 'Target:'} {fmt(c.target)}</span>
                   <span>⏳ {c.weeks} {lang === 'bn' ? 'সপ্তাহ' : 'Weeks'}</span>
                 </p>
+                <p style={{ fontSize: 11, color: TH.textMid, marginTop: 4, fontStyle: "italic" }}>
+                   {lang === 'bn' ? 'সাপ্তাহিক লক্ষ্য:' : 'Weekly Target:'} {fmt(weeklyAmount)}
+                </p>
               </div>
 
               <div style={{ height: 8, background: TH.bgInner, borderRadius: 10, overflow: "hidden", margin: "15px 0" }}>
                 <div style={{ width: `${Math.max(progressPercent, 0)}%`, height: '100%', background: progressPercent >= 100 ? '#10b981' : 'linear-gradient(90deg, #fbbf24, #f59e0b)', borderRadius: 10, transition: "width 0.5s ease" }}></div>
               </div>
-              
+
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <p style={{ fontSize: 12, fontWeight: 800, color: progressPercent >= 100 ? "#10b981" : TH.textMid }}>
-                  {progressPercent >= 100 
-                    ? (lang === 'bn' ? '🎉 চ্যালেঞ্জ সম্পন্ন!' : '🎉 Completed!') 
-                    : `${fmt(savedAmt)} ${lang === 'bn' ? 'জমা হয়েছে' : 'Saved'}`
+                  {progressPercent >= 100
+                    ? (lang === 'bn' ? '🎉 চ্যালেঞ্জ সম্পন্ন!' : '🎉 Completed!')
+                    : `${fmt(savedAmt)} ${lang === 'bn' ? 'জমা হয়েছে' : 'Saved'}`
                   }
                 </p>
-                
-                {/* 🔥 টাকা জমা দেওয়ার বাটন */}
+
                 {progressPercent < 100 && (
-                  <button 
+                  <button
                     onClick={() => setDepoId(depoId === c.id ? null : c.id)}
                     style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "none", padding: "6px 12px", borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
                   >
@@ -171,14 +185,13 @@ export default function ChallengesView({ data, setData, fmt, TH, lang, showToast
                 )}
               </div>
 
-              {/* 🔥 জমার ফর্ম (বক্স) */}
               {depoId === c.id && (
                 <div style={{ marginTop: 15, padding: 15, background: TH.bgInner, borderRadius: 16, display: "flex", flexDirection: "column", gap: 10 }}>
                   <p style={{ fontSize: 12, fontWeight: 700, color: TH.text }}>{lang === 'bn' ? 'কত টাকা জমা দিবেন?' : 'Enter Amount to Deposit:'}</p>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input type="number" placeholder={lang === 'bn' ? 'এমাউন্ট' : 'Amount'} value={depoAmt} onChange={e => setDepoAmt(e.target.value)} style={{ flex: 1, padding: 10, borderRadius: 10, border: "none", background: TH.bgCard, color: TH.text, outline: "none", fontWeight: 600 }} />
                     <select value={depoWallet} onChange={e => setDepoWallet(e.target.value)} style={{ flex: 1, padding: 10, borderRadius: 10, border: "none", background: TH.bgCard, color: TH.text, outline: "none", fontWeight: 600 }}>
-                      {data.wallets.map(w => <option key={w.id} value={w.id} style={{background: TH.bgCard}}>{w.name} ({w.balance})</option>)}
+                      {data.wallets.map(w =>(<option key={w.id} value={w.id} style={{ background: TH.bgCard }}>{w.name} ({fmt(w.balance)}) </option>))}
                     </select>
                   </div>
                   <button onClick={() => handleDeposit(c)} style={{ width: "100%", padding: 10, borderRadius: 10, background: "#10b981", color: "#fff", border: "none", fontWeight: 800, cursor: "pointer" }}>
@@ -192,4 +205,4 @@ export default function ChallengesView({ data, setData, fmt, TH, lang, showToast
       )}
     </div>
   );
-}
+} // <--- মেইন ফাংশন ChallengesView এখানে শেষ
